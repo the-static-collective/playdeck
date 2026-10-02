@@ -2,6 +2,7 @@ import {
   readdirSync,
   readFileSync,
   statSync,
+  writeFileSync,
 } from "node:fs";
 import {join, relative} from "node:path";
 import {fileURLToPath} from "node:url";
@@ -14,6 +15,11 @@ import {parseBundleStrings} from "./bundle";
 import {commitStudioPayload} from "./commitServer";
 import {prepareNextSong} from "./nextSongServer";
 import {recomposeStudioPlan} from "./recompose";
+import {
+  createStudioSessionArchive,
+  parseStudioSessionArchive,
+  serializeStudioSessionArchive,
+} from "./sessionArchive";
 import {
   enqueueStudioSongs,
   moveStudioQueuedSong,
@@ -246,12 +252,100 @@ if (!secondTake.next || secondTake.next.name !== "03-room.wav") {
   );
 }
 
+const portableSession = createStudioSessionArchive({
+  session: {
+    ...session,
+    deck: first.inheritedDeck,
+    track: next.track,
+    worldRule: firstPayload.worldRule,
+    plan: next.plan,
+    envelope: next.envelope,
+    receipt: second.receipt,
+  },
+  assets: {
+    ...secondAssets,
+    ...second.newAssets,
+  },
+  queue: [secondTake.next],
+  receipts: [
+    ...(session.receipt ? [session.receipt] : []),
+    first.receipt,
+    second.receipt,
+  ],
+  checkpoint: {
+    id: second.id,
+    receipt: second.receipt,
+    inheritedDeck: second.inheritedDeck,
+  },
+  inheritAfterRender: true,
+  dirty: false,
+});
+
+const sessionPath = join(
+  proofOutput,
+  "studio-005-session.playdeck-session.json",
+);
+writeFileSync(
+  sessionPath,
+  serializeStudioSessionArchive(portableSession),
+  "utf8",
+);
+
+const resumed = parseStudioSessionArchive(
+  readFileSync(sessionPath, "utf8"),
+);
+
+if (resumed.session.receipt?.id !== second.receipt.id) {
+  throw new Error(
+    "Resumed session did not preserve the current witnessed receipt.",
+  );
+}
+
+if (resumed.receipts.length !== 3) {
+  throw new Error(
+    `Expected three preserved receipts at resume checkpoint, got ${resumed.receipts.length}`,
+  );
+}
+
+if (
+  resumed.checkpoint?.inheritedDeck?.cards.length !== 6 ||
+  resumed.checkpoint.receipt.id !== second.receipt.id
+) {
+  throw new Error(
+    "Resumed session did not preserve the six-card continuity checkpoint.",
+  );
+}
+
+if (
+  resumed.queue.length !== 1 ||
+  resumed.queue[0].name !== "03-room.wav"
+) {
+  throw new Error(
+    "Resumed session did not preserve the still-unborn future queue.",
+  );
+}
+
+if (
+  resumed.queue.some(
+    (queued) =>
+      "plan" in
+      (queued as unknown as Record<string, unknown>),
+  )
+) {
+  throw new Error(
+    "A saved future queue must not contain pre-composed plans.",
+  );
+}
+
+const restoredThird = resumed.queue[0];
+const restoredDeck = resumed.checkpoint.inheritedDeck;
+
 const thirdPrepared = await prepareNextSong(
   {
-    deck: second.inheritedDeck,
-    worldRule: firstPayload.worldRule,
-    priorPlan: next.plan,
-    audio: secondTake.next.audio,
+    deck: restoredDeck,
+    worldRule: resumed.session.worldRule,
+    priorPlan: resumed.session.plan,
+    audio: restoredThird.audio,
   },
   {
     scratchRoot: join(proofScratch, "third"),
@@ -272,15 +366,13 @@ if (thirdPrepared.plan.deckId !== second.inheritedDeck.id) {
 }
 
 const thirdAssets: Record<string, StudioAssetPayload> = {
-  ...baseAssets,
-  ...first.newAssets,
-  ...second.newAssets,
+  ...resumed.assets,
   [thirdPrepared.track.source]: thirdPrepared.audioAsset,
 };
 
 const third = await commitStudioPayload(
   {
-    deck: second.inheritedDeck,
+    deck: restoredDeck,
     track: thirdPrepared.track,
     worldRule: firstPayload.worldRule,
     plan: thirdPrepared.plan,
@@ -306,8 +398,8 @@ if (third.inheritedDeck.cards.length !== 7) {
   );
 }
 
-if (secondTake.remaining.length !== 0) {
-  throw new Error("Album Session queue should be empty after third song.");
+if (resumed.queue.slice(1).length !== 0) {
+  throw new Error("Resumed Album Session queue should empty after third song.");
 }
 
 const continuity = third.inheritedDeck.metadata?.continuity as
@@ -333,7 +425,12 @@ console.log(
     thirdReceipt: third.receipt.id,
     thirdDeckCards: third.inheritedDeck.cards.length,
     sessionContinuityDepth: continuity?.history?.length ?? 0,
-    queueRemaining: secondTake.remaining.length,
+    queueRemaining: resumed.queue.slice(1).length,
+    resumedReceiptCount: resumed.receipts.length,
+    resumedQueue: resumed.queue.map((item) => item.name),
+    resumedCheckpointCards:
+      resumed.checkpoint?.inheritedDeck?.cards.length ?? 0,
+    sessionFile: sessionPath,
     firstNewAssets: Object.keys(first.newAssets).length,
     secondNewAssets: Object.keys(second.newAssets).length,
     thirdNewAssets: Object.keys(third.newAssets).length,

@@ -8,6 +8,7 @@ import {Player, type PlayerRef} from "@remotion/player";
 import type {
   CardSpec,
   DeckSpec,
+  PerformanceReceipt,
   SectionGate,
   TrackSpec,
   WorldRule,
@@ -21,6 +22,7 @@ import {downloadJson} from "./download";
 import {
   assetPayloadToObjectUrl,
   buildStudioCommitPayload,
+  collectStudioAssets,
   commitStudioPerformance,
   fileToPayload,
   prepareStudioNextSong,
@@ -31,6 +33,10 @@ import type {
   StudioQueuedSong,
 } from "./cockpitTypes";
 import {recomposeStudioPlan} from "./recompose";
+import {
+  createStudioSessionArchive,
+  parseStudioSessionArchive,
+} from "./sessionArchive";
 import {
   enqueueStudioSongs,
   moveStudioQueuedSong,
@@ -101,6 +107,8 @@ export const App: React.FC = () => {
   const [preparingNext, setPreparingNext] = useState(false);
   const [albumQueue, setAlbumQueue] =
     useState<StudioQueuedSong[]>([]);
+  const [receiptHistory, setReceiptHistory] =
+    useState<PerformanceReceipt[]>([]);
   const dynamicUrls = useRef<string[]>([]);
 
   useEffect(
@@ -176,6 +184,7 @@ export const App: React.FC = () => {
       setRuntimeAssets({});
       setRuntimeAssetUrls({});
       setAlbumQueue([]);
+      setReceiptHistory(next.receipt ? [next.receipt] : []);
       setLastCommit(null);
       setDirty(false);
     } catch (reason) {
@@ -185,8 +194,108 @@ export const App: React.FC = () => {
     }
   };
 
+  const saveSession = async () => {
+    if (!session) return;
+
+    try {
+      setError(null);
+      const portableAssets = await collectStudioAssets(
+        loaded,
+        runtimeAssets,
+      );
+      const archive = createStudioSessionArchive({
+        session,
+        assets: portableAssets,
+        queue: albumQueue,
+        receipts: receiptHistory,
+        checkpoint: lastCommit
+          ? {
+              id: lastCommit.id,
+              receipt: lastCommit.receipt,
+              inheritedDeck: lastCommit.inheritedDeck,
+            }
+          : undefined,
+        inheritAfterRender,
+        dirty,
+      });
+
+      downloadJson(
+        `${session.deck.id}.playdeck-session.json`,
+        archive,
+      );
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : String(reason),
+      );
+    }
+  };
+
+  const openSession = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setError(null);
+      const archive = parseStudioSessionArchive(
+        await file.text(),
+      );
+
+      loaded?.dispose();
+      setLoaded(null);
+      dynamicUrls.current.forEach((url) =>
+        URL.revokeObjectURL(url),
+      );
+      dynamicUrls.current = [];
+
+      const urls: Record<string, string> = {};
+      for (const [logical, asset] of Object.entries(
+        archive.assets,
+      )) {
+        const url = assetPayloadToObjectUrl(asset);
+        dynamicUrls.current.push(url);
+        urls[logical] = url;
+      }
+
+      setRuntimeAssets(archive.assets);
+      setRuntimeAssetUrls(urls);
+      setSession(archive.session);
+      setAlbumQueue(archive.queue);
+      setReceiptHistory(archive.receipts);
+      setInheritAfterRender(
+        archive.preferences.inheritAfterRender,
+      );
+      setDirty(archive.dirty);
+      setLastCommit(
+        archive.checkpoint
+          ? {
+              id: archive.checkpoint.id,
+              outputDir: "session://portable",
+              video: "session://portable",
+              receipt: archive.checkpoint.receipt,
+              inheritedDeck:
+                archive.checkpoint.inheritedDeck,
+              newAssets: {},
+            }
+          : null,
+      );
+      setSelectedCard(
+        archive.session.deck.order?.[0] ??
+          archive.session.deck.cards[0]?.id ??
+          null,
+      );
+      player.current?.seekTo(0);
+      event.target.value = "";
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : String(reason),
+      );
+    }
+  };
+
   const commitPerformance = async () => {
-    if (!loaded || !session || committing) return;
+    if (!session || committing) return;
 
     try {
       setError(null);
@@ -199,6 +308,12 @@ export const App: React.FC = () => {
       });
       const result = await commitStudioPerformance(payload);
       setLastCommit(result);
+      setReceiptHistory((current) => [
+        ...current.filter(
+          (receipt) => receipt.id !== result.receipt.id,
+        ),
+        result.receipt,
+      ]);
 
       if (Object.keys(result.newAssets).length > 0) {
         setRuntimeAssets((current) => ({
@@ -364,22 +479,32 @@ export const App: React.FC = () => {
     return (
       <main className="landing">
         <section className="landing-card">
-          <div className="eyebrow">PLAYDECK / STUDIO 004</div>
+          <div className="eyebrow">PLAYDECK / STUDIO 005</div>
           <h1>Open the room.</h1>
           <p>
             Load any PlayDeck output bundle. Studio reconstructs its
             logical media, receipt, composition plan, and deck without
             inventing a second file format.
           </p>
-          <label className="bundle-button">
-            Choose PlayDeck bundle
-            <input
-              type="file"
-              multiple
-              {...({webkitdirectory: ""} as Record<string, string>)}
-              onChange={onBundle}
-            />
-          </label>
+          <div className="landing-actions">
+            <label className="bundle-button">
+              Choose PlayDeck bundle
+              <input
+                type="file"
+                multiple
+                {...({webkitdirectory: ""} as Record<string, string>)}
+                onChange={onBundle}
+              />
+            </label>
+            <label className="bundle-button session-open-button">
+              Resume Studio session
+              <input
+                type="file"
+                accept=".json,.playdeck-session.json,application/json"
+                onChange={openSession}
+              />
+            </label>
+          </div>
           {error ? <div className="error">{error}</div> : null}
           <div className="landing-law">
             PLAN ≠ RENDER · PREVIEW ≠ RECEIPT · OVERRIDE ≠ HISTORY
@@ -401,7 +526,7 @@ export const App: React.FC = () => {
     <main className="studio-shell">
       <header className="topbar">
         <div>
-          <div className="eyebrow">PLAYDECK / STUDIO 004</div>
+          <div className="eyebrow">PLAYDECK / STUDIO 005</div>
           <h1>{session.deck.title ?? session.deck.id}</h1>
         </div>
         <div className="top-actions">
@@ -409,7 +534,7 @@ export const App: React.FC = () => {
             {dirty ? "LOCAL RECOMPOSITION" : "WITNESSED BUNDLE"}
           </span>
           <label className="compact-button">
-            Open another
+            Open bundle
             <input
               type="file"
               multiple
@@ -417,6 +542,20 @@ export const App: React.FC = () => {
               onChange={onBundle}
             />
           </label>
+          <label className="compact-button">
+            Resume session
+            <input
+              type="file"
+              accept=".json,.playdeck-session.json,application/json"
+              onChange={openSession}
+            />
+          </label>
+          <button
+            className="compact-button"
+            onClick={saveSession}
+          >
+            Save session
+          </button>
           <button
             className="compact-button"
             onClick={() =>
@@ -737,7 +876,9 @@ export const App: React.FC = () => {
                 <span className="panel-kicker">ALBUM SESSION</span>
                 <strong>{session.track.title ?? session.track.id}</strong>
               </div>
-              <span>{albumQueue.length} queued</span>
+              <span>
+                {albumQueue.length} queued · {receiptHistory.length} receipts
+              </span>
             </div>
 
             <label className="next-song-button">

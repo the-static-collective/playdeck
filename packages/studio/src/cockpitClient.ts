@@ -29,24 +29,34 @@ export const fileToPayload = async (
   };
 };
 
+export const collectStudioAssets = async (
+  loaded: BrowserStudioBundle | null | undefined,
+  extraAssets: Record<string, StudioAssetPayload> = {},
+): Promise<Record<string, StudioAssetPayload>> => {
+  const assets: Record<string, StudioAssetPayload> = {};
+
+  if (loaded) {
+    for (const [logical, file] of Object.entries(loaded.assetFiles)) {
+      assets[logical] = await fileToPayload(file);
+    }
+  }
+
+  Object.assign(assets, extraAssets);
+  return assets;
+};
+
 export const buildStudioCommitPayload = async ({
   loaded,
   session,
   inherit,
   extraAssets = {},
 }: {
-  loaded: BrowserStudioBundle;
+  loaded?: BrowserStudioBundle | null;
   session: StudioBundle;
   inherit: boolean;
   extraAssets?: Record<string, StudioAssetPayload>;
 }): Promise<StudioCommitPayload> => {
-  const assets: Record<string, StudioAssetPayload> = {};
-
-  for (const [logical, file] of Object.entries(loaded.assetFiles)) {
-    assets[logical] = await fileToPayload(file);
-  }
-
-  Object.assign(assets, extraAssets);
+  const assets = await collectStudioAssets(loaded, extraAssets);
 
   return {
     deck: session.deck,

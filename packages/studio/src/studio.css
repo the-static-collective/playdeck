@@ -649,3 +649,16 @@ button {
   opacity: 0.45;
   cursor: default;
 }
+
+
+.landing-actions {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.session-open-button {
+  background: rgba(111, 132, 196, 0.1);
+  border-color: rgba(111, 132, 196, 0.28);
+}
