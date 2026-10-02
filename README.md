@@ -656,9 +656,9 @@ That was enough reason to make a repository.
 [x] folder -> deck ingestion
 [x] folder + song command
 [x] persistent album deck
-[ ] bounded card awakening
+[x] bounded card awakening
 ~~~
 
 Current phase:
 
-> **one deck can now survive a whole album of witnessed crossings.**
+> **a still can now wake, move for a bounded interval, freeze into a new card, and survive into the next song.**
