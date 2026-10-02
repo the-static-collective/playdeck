@@ -510,7 +510,7 @@ The plan survives the renderer.
 
 ## Studio
 
-Studio 003 is live in `packages/studio`.
+Studio 004 is live in `packages/studio`.
 
 ~~~bash
 npm run studio
@@ -538,6 +538,10 @@ A human can:
 - analyze that new audio inside the local Studio worker
 - compose its next plan from `inherited-room`
 - keep editing / rendering / sealing without leaving the cockpit
+- add several future songs to an Album Session at once
+- reorder or remove that future stack before it reaches continuity
+- expose future song identity/order without inventing future plans
+- advance only the front queued song after the current receipt yields its inherited deck
 
 The cockpit commit is local-only and bounded. The browser sends structured state plus selected bundle media to its own localhost Studio server; a dedicated worker performs the render. It does not expose arbitrary shell execution.
 
@@ -591,6 +595,29 @@ EDIT -> RENDER -> SEALED RECEIPT
 ~~~
 
 The next track is not composed from the original folder. It is composed from the deck produced by the immediately preceding witnessed performance.
+
+Studio 004 adds a future stack without violating that law:
+
+~~~text
+CURRENT SONG
+    |
+    | witnessed crossing
+    v
+INHERITED DECK
+    |
+    +------> QUEUED SONG 2 -- compose now
+    |
+    | receipt 2
+    v
+NEXT INHERITED DECK
+    |
+    +------> QUEUED SONG 3 -- compose now
+    |
+    v
+    ...
+~~~
+
+Songs deeper in the queue are known as files and order only. They have **no CompositionPlan yet**. Reordering the queue therefore changes possibility, not history.
 
 ---
 
@@ -717,6 +744,7 @@ That was enough reason to make a repository.
 [x] preview studio
 [x] studio render -> seal -> inherit cockpit
 [x] studio next-song inherited album loop
+[x] studio album-session future queue
 [x] folder -> deck ingestion
 [x] folder + song command
 [x] persistent album deck
@@ -725,4 +753,4 @@ That was enough reason to make a repository.
 
 Current phase:
 
-> **an album can now be played forward inside one cockpit, one witnessed crossing at a time.**
+> **the cockpit can now see an album ahead without pretending its future has already happened.**
