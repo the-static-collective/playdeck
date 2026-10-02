@@ -9,121 +9,289 @@
   "width": 1280,
   "height": 720,
   "gates": [
-    {"id": "gate-00", "at": 0.0, "kind": "intro", "label": "arrival"},
-    {"id": "gate-01", "at": 28.0, "kind": "verse", "label": "old room / map"},
-    {"id": "gate-02", "at": 41.0, "kind": "pre-chorus", "label": "call the absent"},
-    {"id": "gate-03", "at": 97.0, "kind": "chorus", "label": "back inside the pattern"},
-    {"id": "gate-04", "at": 112.0, "kind": "verse", "label": "table seven"},
-    {"id": "gate-05", "at": 145.0, "kind": "pre-chorus", "label": "feed the dark a little flame"},
-    {"id": "gate-06", "at": 167.0, "kind": "chorus", "label": "signal again"},
-    {"id": "gate-07", "at": 182.0, "kind": "bridge", "label": "not a monument / not a machine"},
-    {"id": "gate-08", "at": 204.0, "kind": "breakdown", "label": "one voice / two hands / three answers"},
-    {"id": "gate-09", "at": 219.0, "kind": "chorus", "label": "final assembly"},
-    {"id": "gate-10", "at": 244.0, "kind": "outro", "label": "pass the note"},
-    {"id": "gate-11", "at": 259.0, "kind": "outro", "label": "meet us there"}
+    {
+      "id": "gate-00",
+      "at": 0,
+      "kind": "intro",
+      "label": "arrival"
+    },
+    {
+      "id": "gate-01",
+      "at": 28,
+      "kind": "verse",
+      "label": "old room / map"
+    },
+    {
+      "id": "gate-02",
+      "at": 41,
+      "kind": "pre-chorus",
+      "label": "call the absent"
+    },
+    {
+      "id": "gate-03",
+      "at": 97,
+      "kind": "chorus",
+      "label": "back inside the pattern"
+    },
+    {
+      "id": "gate-04",
+      "at": 112,
+      "kind": "verse",
+      "label": "table seven"
+    },
+    {
+      "id": "gate-05",
+      "at": 145,
+      "kind": "pre-chorus",
+      "label": "feed the dark a little flame"
+    },
+    {
+      "id": "gate-06",
+      "at": 167,
+      "kind": "chorus",
+      "label": "signal again"
+    },
+    {
+      "id": "gate-07",
+      "at": 182,
+      "kind": "bridge",
+      "label": "not a monument / not a machine"
+    },
+    {
+      "id": "gate-08",
+      "at": 204,
+      "kind": "breakdown",
+      "label": "one voice / two hands / three answers"
+    },
+    {
+      "id": "gate-09",
+      "at": 219,
+      "kind": "chorus",
+      "label": "final assembly"
+    },
+    {
+      "id": "gate-10",
+      "at": 244,
+      "kind": "outro",
+      "label": "pass the note"
+    },
+    {
+      "id": "gate-11",
+      "at": 259,
+      "kind": "outro",
+      "label": "meet us there"
+    }
   ],
   "events": [
     {
       "id": "event-001",
-      "at": 0.0,
-      "duration": 28.0,
+      "at": 0,
+      "duration": 28,
       "type": "arrive",
-      "cards": ["card-01", "card-02", "card-03", "card-04", "card-05", "card-06", "card-07", "card-08", "card-09"],
-      "because": "The specimen begins as one readable printed page before the deck learns it can separate."
+      "cards": [
+        "card-01",
+        "card-02",
+        "card-03",
+        "card-04",
+        "card-05",
+        "card-06",
+        "card-07",
+        "card-08",
+        "card-09"
+      ],
+      "because": "The specimen begins as one readable printed page before the deck learns it can separate.",
+      "params": {
+        "from": "sheet",
+        "to": "deck"
+      }
     },
     {
       "id": "event-002",
-      "at": 28.0,
-      "duration": 13.0,
+      "at": 28,
+      "duration": 13,
       "type": "hinge",
-      "cards": ["card-01", "card-04", "card-07"],
+      "cards": [
+        "card-01",
+        "card-04",
+        "card-07"
+      ],
       "because": "Verse one introduces separate objects and old-room memory."
     },
     {
       "id": "event-003",
-      "at": 41.0,
-      "duration": 56.0,
+      "at": 41,
+      "duration": 56,
       "type": "thread",
-      "cards": ["card-02", "card-04", "card-05", "card-08"],
+      "cards": [
+        "card-02",
+        "card-04",
+        "card-05",
+        "card-08"
+      ],
       "because": "The pre-chorus calls absent fragments into visible relation."
     },
     {
       "id": "event-004",
-      "at": 97.0,
-      "duration": 15.0,
+      "at": 97,
+      "duration": 15,
       "type": "assemble",
-      "cards": ["card-01", "card-02", "card-04", "card-05", "card-06", "card-08", "card-09"],
-      "params": {"shape": "room-v1", "cohesion": 0.55},
+      "cards": [
+        "card-01",
+        "card-02",
+        "card-04",
+        "card-05",
+        "card-06",
+        "card-08",
+        "card-09"
+      ],
+      "params": {
+        "shape": "room-v1",
+        "cohesion": 0.55
+      },
       "because": "First chorus proves fragments can make architecture without fully resolving."
     },
     {
       "id": "event-005",
-      "at": 112.0,
-      "duration": 33.0,
+      "at": 112,
+      "duration": 33,
       "type": "drift",
-      "cards": ["card-03", "card-06", "card-07"],
+      "cards": [
+        "card-03",
+        "card-06",
+        "card-07"
+      ],
       "because": "Verse two keeps rough edges and individual witness visible."
     },
     {
       "id": "event-006",
-      "at": 145.0,
-      "duration": 22.0,
+      "at": 145,
+      "duration": 22,
       "type": "fracture",
-      "cards": ["card-05", "card-07", "card-08"],
+      "cards": [
+        "card-05",
+        "card-07",
+        "card-08"
+      ],
       "because": "The second pre-chorus feeds the dark a little flame; fracture increases before the next repair."
     },
     {
       "id": "event-007",
-      "at": 167.0,
-      "duration": 15.0,
+      "at": 167,
+      "duration": 15,
       "type": "assemble",
-      "cards": ["card-01", "card-02", "card-03", "card-04", "card-05", "card-06", "card-07", "card-08", "card-09"],
-      "params": {"shape": "room-v2", "cohesion": 0.75},
+      "cards": [
+        "card-01",
+        "card-02",
+        "card-03",
+        "card-04",
+        "card-05",
+        "card-06",
+        "card-07",
+        "card-08",
+        "card-09"
+      ],
+      "params": {
+        "shape": "room-v2",
+        "cohesion": 0.75
+      },
       "because": "Second chorus rebuilds the signal with more of the deck participating."
     },
     {
       "id": "event-008",
-      "at": 182.0,
-      "duration": 22.0,
+      "at": 182,
+      "duration": 22,
       "type": "corrupt",
-      "cards": ["card-01", "card-02", "card-03", "card-04", "card-05", "card-06", "card-07", "card-08", "card-09"],
+      "cards": [
+        "card-01",
+        "card-02",
+        "card-03",
+        "card-04",
+        "card-05",
+        "card-06",
+        "card-07",
+        "card-08",
+        "card-09"
+      ],
       "worldRule": "vhs-machine",
-      "params": {"dialect": ["teletext", "cyber-analog-vhs", "machine-flatness"]},
+      "params": {
+        "dialect": [
+          "teletext",
+          "cyber-analog-vhs",
+          "machine-flatness"
+        ]
+      },
       "because": "The bridge explicitly refuses monument, machine, perfect answer, and polished dream; the deck temporarily enters a deliberately wrong medium."
     },
     {
       "id": "event-009",
-      "at": 204.0,
-      "duration": 15.0,
+      "at": 204,
+      "duration": 15,
       "type": "contact-sheet",
-      "cards": ["card-01", "card-02", "card-03", "card-04", "card-05", "card-06", "card-07", "card-08", "card-09"],
-      "params": {"groups": 3},
-      "because": "One voice, two hands, three answers: the deck becomes addressable parts before recomposition."
+      "cards": [
+        "card-01",
+        "card-02",
+        "card-03",
+        "card-04",
+        "card-05",
+        "card-06",
+        "card-07",
+        "card-08",
+        "card-09"
+      ],
+      "params": {
+        "groups": 3
+      },
+      "because": "One voice, two hands, three answers: the deck becomes addressable parts before recomposition.",
+      "persist": true
     },
     {
       "id": "event-010",
-      "at": 219.0,
-      "duration": 25.0,
+      "at": 219,
+      "duration": 25,
       "type": "assemble",
-      "cards": ["card-01", "card-02", "card-03", "card-04", "card-05", "card-06", "card-07", "card-08", "card-09"],
-      "params": {"shape": "one-room", "cohesion": 1.0, "center": "card-05"},
-      "because": "Final chorus is the first point where all nine panels behave as one room."
+      "cards": [
+        "card-01",
+        "card-02",
+        "card-03",
+        "card-04",
+        "card-05",
+        "card-06",
+        "card-07",
+        "card-08",
+        "card-09"
+      ],
+      "params": {
+        "shape": "one-room",
+        "cohesion": 1,
+        "center": "card-05"
+      },
+      "because": "Final chorus is the first point where all nine panels behave as one room.",
+      "persist": true
     },
     {
       "id": "event-011",
-      "at": 244.0,
-      "duration": 15.0,
+      "at": 244,
+      "duration": 15,
       "type": "residue",
-      "cards": ["card-03", "card-05", "card-09"],
-      "because": "The outro leaves a note, a lamp, stairs, and persistent room-memory rather than closing the file."
+      "cards": [
+        "card-03",
+        "card-05",
+        "card-09"
+      ],
+      "because": "The outro leaves a note, a lamp, stairs, and persistent room-memory rather than closing the file.",
+      "persist": true
     },
     {
       "id": "event-012",
-      "at": 259.0,
+      "at": 259,
       "duration": 7.2,
       "type": "hold",
-      "cards": ["card-09"],
-      "params": {"message": "meet us there"},
+      "cards": [
+        "card-09"
+      ],
+      "params": {
+        "message": "meet us there"
+      },
       "because": "The composition ends with an open doorway, not a closed endpoint."
     }
   ],
@@ -140,7 +308,9 @@
   },
   "finalState": {
     "assembledAs": "room",
-    "held": ["card-09"],
+    "held": [
+      "card-09"
+    ],
     "missing": [],
     "newCards": [],
     "notes": [

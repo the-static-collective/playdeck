@@ -6,26 +6,92 @@
   "duration": 266.2,
   "tempoBpmApprox": 129,
   "gates": [
-    {"id": "gate-00", "at": 0.0, "kind": "intro", "label": "arrival"},
-    {"id": "gate-01", "at": 28.0, "kind": "verse", "label": "old room / map"},
-    {"id": "gate-02", "at": 41.0, "kind": "pre-chorus", "label": "call the absent"},
-    {"id": "gate-03", "at": 97.0, "kind": "chorus", "label": "back inside the pattern"},
-    {"id": "gate-04", "at": 112.0, "kind": "verse", "label": "table seven"},
-    {"id": "gate-05", "at": 145.0, "kind": "pre-chorus", "label": "feed the dark a little flame"},
-    {"id": "gate-06", "at": 167.0, "kind": "chorus", "label": "signal again"},
-    {"id": "gate-07", "at": 182.0, "kind": "bridge", "label": "not a monument / not a machine"},
-    {"id": "gate-08", "at": 204.0, "kind": "breakdown", "label": "one voice / two hands / three answers"},
-    {"id": "gate-09", "at": 219.0, "kind": "chorus", "label": "final assembly"},
-    {"id": "gate-10", "at": 244.0, "kind": "outro", "label": "pass the note"},
-    {"id": "gate-11", "at": 259.0, "kind": "outro", "label": "meet us there"}
+    {
+      "id": "gate-00",
+      "at": 0,
+      "kind": "intro",
+      "label": "arrival"
+    },
+    {
+      "id": "gate-01",
+      "at": 28,
+      "kind": "verse",
+      "label": "old room / map"
+    },
+    {
+      "id": "gate-02",
+      "at": 41,
+      "kind": "pre-chorus",
+      "label": "call the absent"
+    },
+    {
+      "id": "gate-03",
+      "at": 97,
+      "kind": "chorus",
+      "label": "back inside the pattern"
+    },
+    {
+      "id": "gate-04",
+      "at": 112,
+      "kind": "verse",
+      "label": "table seven"
+    },
+    {
+      "id": "gate-05",
+      "at": 145,
+      "kind": "pre-chorus",
+      "label": "feed the dark a little flame"
+    },
+    {
+      "id": "gate-06",
+      "at": 167,
+      "kind": "chorus",
+      "label": "signal again"
+    },
+    {
+      "id": "gate-07",
+      "at": 182,
+      "kind": "bridge",
+      "label": "not a monument / not a machine"
+    },
+    {
+      "id": "gate-08",
+      "at": 204,
+      "kind": "breakdown",
+      "label": "one voice / two hands / three answers"
+    },
+    {
+      "id": "gate-09",
+      "at": 219,
+      "kind": "chorus",
+      "label": "final assembly"
+    },
+    {
+      "id": "gate-10",
+      "at": 244,
+      "kind": "outro",
+      "label": "pass the note"
+    },
+    {
+      "id": "gate-11",
+      "at": 259,
+      "kind": "outro",
+      "label": "meet us there"
+    }
   ],
   "analysis": {
     "envelope": {
-      "bands": ["low", "mid", "high"],
-      "artifact": "asset://genesis-001/static-collective-envelope.json"
+      "bands": [
+        "low",
+        "mid",
+        "high"
+      ],
+      "artifact": "asset://genesis-001/static-collective-envelope.json",
+      "sampleHz": 1
     },
     "notes": [
       "Energy data is precomputed before render.",
+      "Genesis 001 commits a 1 Hz measured envelope derived from the original 4 Hz analysis.",
       "Live audio analysis is not required for deterministic playback."
     ]
   }

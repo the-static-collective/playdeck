@@ -20,6 +20,8 @@ The fixture itself should not care.
 - `track.json` — duration, approximate tempo, and observed structural gates
 - `world-rule.json` — the first `flipbook` world rule
 - `plan.json` — the deterministic composition plan that turns the deck into a room
+- `static-collective-envelope.json` — measured 1 Hz low/mid/high motion pressure from the source track
+- `asset-map.cdn.json` — replaceable bindings from logical asset URIs to currently hosted media
 
 ## Acceptance test
 
