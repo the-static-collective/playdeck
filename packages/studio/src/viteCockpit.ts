@@ -1,14 +1,30 @@
+import {spawn} from "node:child_process";
+import {existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from "node:fs";
 import type {IncomingMessage, ServerResponse} from "node:http";
+import {tmpdir} from "node:os";
+import {dirname, join, resolve} from "node:path";
+import {fileURLToPath} from "node:url";
 import type {Plugin} from "vite";
-import {commitStudioPayload} from "./commitServer";
-import type {StudioCommitPayload} from "./cockpitTypes";
+import type {
+  StudioCommitPayload,
+  StudioCommitResult,
+} from "./cockpitTypes";
 
 const MAX_BODY = 512 * 1024 * 1024;
+const here = dirname(fileURLToPath(import.meta.url));
+const repoRoot = resolve(here, "../../..");
+const tsx = join(
+  repoRoot,
+  "node_modules",
+  ".bin",
+  process.platform === "win32" ? "tsx.cmd" : "tsx",
+);
+const worker = resolve(here, "commitWorker.ts");
 
 const readJsonBody = async (
   request: IncomingMessage,
 ): Promise<StudioCommitPayload> =>
-  await new Promise((resolve, reject) => {
+  await new Promise((resolveBody, reject) => {
     const chunks: Buffer[] = [];
     let size = 0;
 
@@ -24,7 +40,7 @@ const readJsonBody = async (
 
     request.on("end", () => {
       try {
-        resolve(
+        resolveBody(
           JSON.parse(Buffer.concat(chunks).toString("utf8")) as StudioCommitPayload,
         );
       } catch (error) {
@@ -45,6 +61,46 @@ const send = (
   response.end(JSON.stringify(value));
 };
 
+const runWorker = async (
+  payload: StudioCommitPayload,
+): Promise<StudioCommitResult> => {
+  if (!existsSync(tsx)) {
+    throw new Error(
+      "tsx is not installed. Run npm install at the PlayDeck repository root.",
+    );
+  }
+
+  const scratch = mkdtempSync(join(tmpdir(), "playdeck-studio-request-"));
+  const input = join(scratch, "request.json");
+  const output = join(scratch, "response.json");
+  writeFileSync(input, JSON.stringify(payload), "utf8");
+
+  try {
+    await new Promise<void>((resolveWorker, reject) => {
+      const child = spawn(tsx, [worker, input, output], {
+        cwd: repoRoot,
+        stdio: ["ignore", "inherit", "inherit"],
+      });
+
+      child.on("error", reject);
+      child.on("exit", (code) => {
+        if (code === 0) resolveWorker();
+        else reject(
+          new Error(
+            `Studio commit worker failed with status ${String(code)}`,
+          ),
+        );
+      });
+    });
+
+    return JSON.parse(
+      readFileSync(output, "utf8"),
+    ) as StudioCommitResult;
+  } finally {
+    rmSync(scratch, {recursive: true, force: true});
+  }
+};
+
 export const studioCockpitPlugin = (): Plugin => ({
   name: "playdeck-studio-cockpit",
   configureServer(server) {
@@ -58,7 +114,7 @@ export const studioCockpitPlugin = (): Plugin => ({
 
         try {
           const payload = await readJsonBody(request);
-          const result = await commitStudioPayload(payload);
+          const result = await runWorker(payload);
           send(response, 200, result);
         } catch (error) {
           send(response, 500, {
