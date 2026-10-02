@@ -26,6 +26,9 @@ jobs:
       - name: Compose Genesis from deck + track + world rule
         run: npm run compose:genesis
 
+      - name: Project Genesis receipt
+        run: npm run receipt:genesis
+
       - name: Render Genesis hero still
         run: npm --workspace @playdeck/render-remotion run still:genesis
 
@@ -36,4 +39,5 @@ jobs:
           path: |
             packages/render-remotion/out/genesis-001.png
             out/genesis-001-plan.generated.json
+            out/genesis-001-receipt.projected.json
           if-no-files-found: warn
