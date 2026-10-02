@@ -1,3 +1,4 @@
+import {createHash} from "node:crypto";
 import {
   mkdirSync,
 } from "node:fs";
@@ -84,13 +85,26 @@ export const materializeAwakenings = ({
     const width = Math.max(320, Math.round(plan.width / 2));
     const height = Math.max(180, Math.round(plan.height / 2));
 
+    const seedHex = createHash("sha1")
+      .update(newCardId)
+      .digest("hex")
+      .slice(0, 8);
+    const seed = Number.parseInt(seedHex, 16);
+    const phaseX = ((seed % 628) / 100).toFixed(2);
+    const phaseY = (((seed >>> 3) % 628) / 100).toFixed(2);
+    const driftX = 4 + (seed % 5);
+    const driftY = 3 + ((seed >>> 5) % 5);
+    const zoomRate = (0.0018 + ((seed >>> 9) % 8) * 0.00018).toFixed(5);
+    const contrast = (1.03 + ((seed >>> 13) % 6) * 0.01).toFixed(2);
+    const saturation = (1.04 + ((seed >>> 17) % 7) * 0.01).toFixed(2);
+
     runFfmpeg([
       "-loop",
       "1",
       "-i",
       localSource,
       "-vf",
-      `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},zoompan=z='min(zoom+0.0025,1.14)':x='iw/2-(iw/zoom/2)+sin(on/7)*5':y='ih/2-(ih/zoom/2)+cos(on/9)*4':d=1:s=${width}x${height}:fps=${plan.fps},eq=contrast=1.06:saturation=1.08,format=yuv420p`,
+      `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},zoompan=z='min(zoom+${zoomRate},1.16)':x='iw/2-(iw/zoom/2)+sin(on/7+${phaseX})*${driftX}':y='ih/2-(ih/zoom/2)+cos(on/9+${phaseY})*${driftY}':d=1:s=${width}x${height}:fps=${plan.fps},eq=contrast=${contrast}:saturation=${saturation},format=yuv420p`,
       "-t",
       duration.toFixed(3),
       "-an",
@@ -143,6 +157,7 @@ export const materializeAwakenings = ({
           sourceCardId,
           eventId: event.id,
           provider: "deterministic-echo-v1",
+          seed: seedHex,
           videoSource,
           freezeSource,
         },
