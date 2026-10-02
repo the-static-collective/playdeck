@@ -17,3 +17,11 @@ export type {
 
 export type {TrackEnvelopeRef, TrackSpec} from "./TrackSpec";
 export type {WorldRule} from "./WorldRule";
+
+export type {
+  PerformanceEvidence,
+  PerformanceReceipt,
+  ReceiptEvent,
+  ReceiptPhase,
+  ReceiptSource,
+} from "./PerformanceReceipt";

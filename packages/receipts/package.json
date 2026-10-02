@@ -1,0 +1,22 @@
+{
+  "name": "@playdeck/receipts",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "receipt:genesis": "tsx src/genesis-proof.ts"
+  },
+  "dependencies": {
+    "@playdeck/core": "0.0.1",
+    "@playdeck/composer": "0.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}

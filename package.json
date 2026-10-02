@@ -9,6 +9,7 @@
     "studio": "npm --workspace @playdeck/render-remotion run studio",
     "render:genesis": "npm --workspace @playdeck/render-remotion run render:genesis",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "compose:genesis": "npm --workspace @playdeck/composer run compose:genesis"
+    "compose:genesis": "npm --workspace @playdeck/composer run compose:genesis",
+    "receipt:genesis": "npm --workspace @playdeck/receipts run receipt:genesis"
   }
 }
