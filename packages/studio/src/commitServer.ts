@@ -51,7 +51,14 @@ const payloadHash = (payload: StudioCommitPayload) =>
         worldRule: payload.worldRule,
         plan: payload.plan,
         envelope: payload.envelope,
-        assetKeys: Object.keys(payload.assets).sort(),
+        assets: Object.entries(payload.assets)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([logical, asset]) => [
+            logical,
+            createHash("sha256")
+              .update(asset.base64)
+              .digest("hex"),
+          ]),
         inherit: payload.inherit,
       }),
     )
@@ -149,7 +156,7 @@ export const commitStudioPayload = async (
 
     const newAssets: Record<string, StudioAssetPayload> = {};
     for (const [logical, local] of Object.entries(rendered.assetSources)) {
-      if (payload.assets[logical]) continue;
+      if (inputBindings[logical] === local) continue;
       newAssets[logical] = readAssetPayload(local);
     }
 
