@@ -643,7 +643,7 @@ That was enough reason to make a repository.
 [x] track analysis artifact
 [x] composer
 [x] Remotion renderer
-[ ] receipt writer
+[x] receipt writer
 [ ] preview studio
 [ ] folder -> deck ingestion
 [ ] persistent album deck
@@ -652,4 +652,4 @@ That was enough reason to make a repository.
 
 Current phase:
 
-> **the deck can deal itself.**
+> **the deck can deal itself, and it knows the difference between prophecy and memory.**
