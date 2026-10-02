@@ -532,31 +532,38 @@ The studio should expose composition without requiring the user to become an edi
 
 ---
 
-## CLI sketch
+## CLI
 
-Someday:
+Single performance:
 
 ~~~bash
-playdeck compose --deck ./deck.json --track ./song.mp3 --world flipbook --out ./performance
+playdeck ./pictures ./song.mp3 --id my-performance --out ./out/my-performance
 ~~~
 
-Then:
+Persistent album:
+
+~~~bash
+playdeck-album ./pictures \
+  ./01-song.mp3 \
+  ./02-song.mp3 \
+  ./03-song.mp3 \
+  --id my-album \
+  --out ./out/my-album
+~~~
+
+The album command ingests the folder once. Each full render is hashed and sealed; its rendered receipt becomes the next track's inherited deck state.
 
 ~~~text
-performance/
-├── plan.json
-├── receipt.json
-├── preview/
-└── final.mp4
+TRACK 1 -> RENDER -> RECEIPT
+                     |
+                     v
+                 TRACK 2
+                     |
+                     v
+                 TRACK 3
 ~~~
 
-Maybe eventually:
-
-~~~bash
-playdeck continue receipt.json --track next-song.mp3
-~~~
-
-That is where things get strange.
+The deck ID stays constant. Performance IDs change. History accumulates instead of resetting.
 
 ---
 
@@ -648,10 +655,10 @@ That was enough reason to make a repository.
 [ ] preview studio
 [x] folder -> deck ingestion
 [x] folder + song command
-[ ] persistent album deck
+[x] persistent album deck
 [ ] bounded card awakening
 ~~~
 
 Current phase:
 
-> **folder + song -> room is now an executable crossing.**
+> **one deck can now survive a whole album of witnessed crossings.**
