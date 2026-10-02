@@ -63,14 +63,12 @@ export const commitStudioPerformance = async (
   });
 
   const result = (await response.json()) as
-    | StudioCommitResult
-    | {error?: string};
+    StudioCommitResult & {error?: string};
 
-  if (!response.ok || "error" in result) {
+  if (!response.ok || result.error) {
     throw new Error(
-      "error" in result && result.error
-        ? result.error
-        : `Studio commit failed with HTTP ${response.status}`,
+      result.error ??
+        `Studio commit failed with HTTP ${response.status}`,
     );
   }
 
