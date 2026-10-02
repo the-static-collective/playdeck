@@ -510,7 +510,7 @@ The plan survives the renderer.
 
 ## Studio
 
-Studio 002 is live in `packages/studio`.
+Studio 003 is live in `packages/studio`.
 
 ~~~bash
 npm run studio
@@ -534,6 +534,10 @@ A human can:
 - render the edited state through the real Remotion runtime
 - seal a new full-performance receipt from the rendered evidence
 - optionally derive and export the inherited next deck
+- choose the next song directly from the inherited deck
+- analyze that new audio inside the local Studio worker
+- compose its next plan from `inherited-room`
+- keep editing / rendering / sealing without leaving the cockpit
 
 The cockpit commit is local-only and bounded. The browser sends structured state plus selected bundle media to its own localhost Studio server; a dedicated worker performs the render. It does not expose arbitrary shell execution.
 
@@ -564,6 +568,29 @@ NEXT PERFORMANCE
 ~~~
 
 The commit ID is content-addressed from the edited state **and the selected asset bytes**, so changing media without changing filenames still creates a distinct performance identity.
+
+Studio 003 closes the album loop:
+
+~~~text
+SONG N
+  |
+  v
+EDIT -> RENDER -> SEALED RECEIPT
+                    |
+                    v
+               INHERITED DECK
+                    |
+                    v
+             CHOOSE NEXT SONG
+                    |
+                    v
+        ANALYZE + COMPOSE LOCALLY
+                    |
+                    v
+                 SONG N+1
+~~~
+
+The next track is not composed from the original folder. It is composed from the deck produced by the immediately preceding witnessed performance.
 
 ---
 
@@ -689,6 +716,7 @@ That was enough reason to make a repository.
 [x] guarded continuity crossing
 [x] preview studio
 [x] studio render -> seal -> inherit cockpit
+[x] studio next-song inherited album loop
 [x] folder -> deck ingestion
 [x] folder + song command
 [x] persistent album deck
@@ -697,4 +725,4 @@ That was enough reason to make a repository.
 
 Current phase:
 
-> **the control room can now commit a witnessed performance back into the instrument.**
+> **an album can now be played forward inside one cockpit, one witnessed crossing at a time.**
