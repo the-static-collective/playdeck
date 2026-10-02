@@ -1,0 +1,29 @@
+{
+  "name": "@playdeck/studio",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "proof": "tsx src/studio-proof.ts && vite build"
+  },
+  "dependencies": {
+    "@playdeck/composer": "0.0.1",
+    "@playdeck/core": "0.0.1",
+    "@playdeck/render-remotion": "0.0.1",
+    "@remotion/player": "4.0.530",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^5.0.4",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.7"
+  }
+}

@@ -44,6 +44,9 @@ jobs:
       - name: Prove persistent three-track album deck
         run: npm run album:proof
 
+      - name: Prove preview studio against a real bundle
+        run: npm run studio:proof
+
       - name: Render Genesis hero still
         run: npm --workspace @playdeck/render-remotion run still:genesis
 
@@ -71,4 +74,5 @@ jobs:
             out/album-001/tracks/*/final.mp4
             out/album-001/tracks/*/awakening.json
             out/album-001/tracks/*/awakenings/**
+            packages/studio/dist/**
           if-no-files-found: warn
