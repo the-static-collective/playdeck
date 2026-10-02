@@ -19,6 +19,12 @@ export type CompositionEvent = {
   duration?: number;
 
   /**
+   * When true, the event remains active at progress=1 after its duration.
+   * State persistence must be declared by the plan; renderers must not infer it.
+   */
+  persist?: boolean;
+
+  /**
    * The compositional verb. Renderers interpret a bounded vocabulary first,
    * but may support extensions.
    */

@@ -1,0 +1,11 @@
+{
+  "name": "playdeck",
+  "private": true,
+  "version": "0.0.1",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "studio": "npm --workspace @playdeck/render-remotion run studio",
+    "render:genesis": "npm --workspace @playdeck/render-remotion run render:genesis",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  }
+}
