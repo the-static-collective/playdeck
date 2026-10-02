@@ -641,7 +641,7 @@ That was enough reason to make a repository.
 [x] schema
 [x] Genesis 001 fixture
 [x] track analysis artifact
-[ ] composer
+[x] composer
 [x] Remotion renderer
 [ ] receipt writer
 [ ] preview studio
@@ -652,4 +652,4 @@ That was enough reason to make a repository.
 
 Current phase:
 
-> **the deck has been dealt.**
+> **the deck can deal itself.**
