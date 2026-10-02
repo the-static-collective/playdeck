@@ -19,10 +19,16 @@ import {
 } from "./browserBundle";
 import {downloadJson} from "./download";
 import {
+  assetPayloadToObjectUrl,
   buildStudioCommitPayload,
   commitStudioPerformance,
+  fileToPayload,
+  prepareStudioNextSong,
 } from "./cockpitClient";
-import type {StudioCommitResult} from "./cockpitTypes";
+import type {
+  StudioAssetPayload,
+  StudioCommitResult,
+} from "./cockpitTypes";
 import {recomposeStudioPlan} from "./recompose";
 import type {StudioBundle} from "./types";
 
@@ -82,13 +88,29 @@ export const App: React.FC = () => {
   const [inheritAfterRender, setInheritAfterRender] = useState(true);
   const [lastCommit, setLastCommit] =
     useState<StudioCommitResult | null>(null);
+  const [runtimeAssets, setRuntimeAssets] =
+    useState<Record<string, StudioAssetPayload>>({});
+  const [runtimeAssetUrls, setRuntimeAssetUrls] =
+    useState<Record<string, string>>({});
+  const [preparingNext, setPreparingNext] = useState(false);
+  const dynamicUrls = useRef<string[]>([]);
 
   useEffect(
     () => () => loaded?.dispose(),
     [loaded],
   );
 
-  const assets = loaded?.assetUrls ?? {};
+  useEffect(
+    () => () => {
+      dynamicUrls.current.forEach((url) => URL.revokeObjectURL(url));
+    },
+    [],
+  );
+
+  const assets = {
+    ...(loaded?.assetUrls ?? {}),
+    ...runtimeAssetUrls,
+  };
 
   const selected = useMemo(
     () =>
@@ -141,6 +163,10 @@ export const App: React.FC = () => {
       setLoaded(next);
       setSession(next);
       setSelectedCard(next.deck.order?.[0] ?? next.deck.cards[0]?.id ?? null);
+      dynamicUrls.current.forEach((url) => URL.revokeObjectURL(url));
+      dynamicUrls.current = [];
+      setRuntimeAssets({});
+      setRuntimeAssetUrls({});
       setLastCommit(null);
       setDirty(false);
     } catch (reason) {
@@ -160,9 +186,28 @@ export const App: React.FC = () => {
         loaded,
         session,
         inherit: inheritAfterRender,
+        extraAssets: runtimeAssets,
       });
       const result = await commitStudioPerformance(payload);
       setLastCommit(result);
+
+      if (Object.keys(result.newAssets).length > 0) {
+        setRuntimeAssets((current) => ({
+          ...current,
+          ...result.newAssets,
+        }));
+        const urls: Record<string, string> = {};
+        for (const [logical, asset] of Object.entries(result.newAssets)) {
+          const url = assetPayloadToObjectUrl(asset);
+          dynamicUrls.current.push(url);
+          urls[logical] = url;
+        }
+        setRuntimeAssetUrls((current) => ({
+          ...current,
+          ...urls,
+        }));
+      }
+
       setSession((current) =>
         current
           ? {...current, receipt: result.receipt}
@@ -175,6 +220,71 @@ export const App: React.FC = () => {
       );
     } finally {
       setCommitting(false);
+    }
+  };
+
+  const chooseNextSong = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (
+      !file ||
+      !session ||
+      !lastCommit?.inheritedDeck ||
+      preparingNext
+    ) {
+      return;
+    }
+
+    try {
+      setError(null);
+      setPreparingNext(true);
+      const audio = await fileToPayload(file);
+      const next = await prepareStudioNextSong({
+        deck: lastCommit.inheritedDeck,
+        worldRule: session.worldRule,
+        priorPlan: session.plan,
+        audio,
+      });
+
+      const audioUrl = URL.createObjectURL(file);
+      dynamicUrls.current.push(audioUrl);
+
+      setRuntimeAssets((current) => ({
+        ...current,
+        [next.track.source]: next.audioAsset,
+      }));
+      setRuntimeAssetUrls((current) => ({
+        ...current,
+        [next.track.source]: audioUrl,
+      }));
+
+      setSession((current) =>
+        current
+          ? {
+              ...current,
+              deck: lastCommit.inheritedDeck!,
+              track: next.track,
+              envelope: next.envelope,
+              plan: next.plan,
+              receipt: undefined,
+            }
+          : current,
+      );
+      setSelectedCard(
+        lastCommit.inheritedDeck.order?.[0] ??
+          lastCommit.inheritedDeck.cards[0]?.id ??
+          null,
+      );
+      setDirty(true);
+      player.current?.seekTo(0);
+      event.target.value = "";
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : String(reason),
+      );
+    } finally {
+      setPreparingNext(false);
     }
   };
 
@@ -226,7 +336,7 @@ export const App: React.FC = () => {
     return (
       <main className="landing">
         <section className="landing-card">
-          <div className="eyebrow">PLAYDECK / STUDIO 001</div>
+          <div className="eyebrow">PLAYDECK / STUDIO 003</div>
           <h1>Open the room.</h1>
           <p>
             Load any PlayDeck output bundle. Studio reconstructs its
@@ -263,7 +373,7 @@ export const App: React.FC = () => {
     <main className="studio-shell">
       <header className="topbar">
         <div>
-          <div className="eyebrow">PLAYDECK / STUDIO 001</div>
+          <div className="eyebrow">PLAYDECK / STUDIO 003</div>
           <h1>{session.deck.title ?? session.deck.id}</h1>
         </div>
         <div className="top-actions">
@@ -588,6 +698,15 @@ export const App: React.FC = () => {
                   >
                     Export next deck
                   </button>
+                  <label className="next-song-button">
+                    {preparingNext ? "Preparing…" : "Choose next song"}
+                    <input
+                      type="file"
+                      accept="audio/*,.mp3,.wav,.m4a,.flac,.ogg"
+                      disabled={preparingNext}
+                      onChange={chooseNextSong}
+                    />
+                  </label>
                 </>
               ) : null}
             </div>

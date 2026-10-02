@@ -8,6 +8,8 @@ import type {Plugin} from "vite";
 import type {
   StudioCommitPayload,
   StudioCommitResult,
+  StudioNextSongPayload,
+  StudioNextSongResult,
 } from "./cockpitTypes";
 
 const MAX_BODY = 512 * 1024 * 1024;
@@ -20,6 +22,7 @@ const tsx = join(
   process.platform === "win32" ? "tsx.cmd" : "tsx",
 );
 const worker = resolve(here, "commitWorker.ts");
+const nextSongWorker = resolve(here, "nextSongWorker.ts");
 
 const readJsonBody = async (
   request: IncomingMessage,
@@ -61,23 +64,25 @@ const send = (
   response.end(JSON.stringify(value));
 };
 
-const runWorker = async (
-  payload: StudioCommitPayload,
-): Promise<StudioCommitResult> => {
+const runJsonWorker = async <TInput, TOutput>(
+  workerPath: string,
+  prefix: string,
+  payload: TInput,
+): Promise<TOutput> => {
   if (!existsSync(tsx)) {
     throw new Error(
       "tsx is not installed. Run npm install at the PlayDeck repository root.",
     );
   }
 
-  const scratch = mkdtempSync(join(tmpdir(), "playdeck-studio-request-"));
+  const scratch = mkdtempSync(join(tmpdir(), prefix));
   const input = join(scratch, "request.json");
   const output = join(scratch, "response.json");
   writeFileSync(input, JSON.stringify(payload), "utf8");
 
   try {
     await new Promise<void>((resolveWorker, reject) => {
-      const child = spawn(tsx, [worker, input, output], {
+      const child = spawn(tsx, [workerPath, input, output], {
         cwd: repoRoot,
         stdio: ["ignore", "inherit", "inherit"],
       });
@@ -87,7 +92,7 @@ const runWorker = async (
         if (code === 0) resolveWorker();
         else reject(
           new Error(
-            `Studio commit worker failed with status ${String(code)}`,
+            `Studio worker failed with status ${String(code)}`,
           ),
         );
       });
@@ -95,7 +100,7 @@ const runWorker = async (
 
     return JSON.parse(
       readFileSync(output, "utf8"),
-    ) as StudioCommitResult;
+    ) as TOutput;
   } finally {
     rmSync(scratch, {recursive: true, force: true});
   }
@@ -114,7 +119,43 @@ export const studioCockpitPlugin = (): Plugin => ({
 
         try {
           const payload = await readJsonBody(request);
-          const result = await runWorker(payload);
+          const result = await runJsonWorker<
+            StudioCommitPayload,
+            StudioCommitResult
+          >(
+            worker,
+            "playdeck-studio-commit-",
+            payload,
+          );
+          send(response, 200, result);
+        } catch (error) {
+          send(response, 500, {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      },
+    );
+
+    server.middlewares.use(
+      "/api/studio/next-song",
+      async (request, response) => {
+        if (request.method !== "POST") {
+          send(response, 405, {error: "POST required"});
+          return;
+        }
+
+        try {
+          const payload = (await readJsonBody(
+            request,
+          )) as unknown as StudioNextSongPayload;
+          const result = await runJsonWorker<
+            StudioNextSongPayload,
+            StudioNextSongResult
+          >(
+            nextSongWorker,
+            "playdeck-studio-next-",
+            payload,
+          );
           send(response, 200, result);
         } catch (error) {
           send(response, 500, {

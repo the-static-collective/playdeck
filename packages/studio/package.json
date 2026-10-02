@@ -18,7 +18,8 @@
     "react-dom": "19.1.0",
     "@playdeck/cli": "0.0.1",
     "@playdeck/continuity": "0.0.1",
-    "@playdeck/receipts": "0.0.1"
+    "@playdeck/receipts": "0.0.1",
+    "@playdeck/audio-analysis": "0.0.1"
   },
   "devDependencies": {
     "@types/node": "^22.18.0",

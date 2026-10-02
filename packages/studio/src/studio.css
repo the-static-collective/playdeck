@@ -523,3 +523,19 @@ button {
   padding: 7px 9px;
   cursor: pointer;
 }
+
+
+.next-song-button {
+  margin-top: 7px;
+  border: 1px solid rgba(121, 183, 154, 0.35);
+  background: rgba(79, 145, 116, 0.12);
+  color: #b8e2ca;
+  padding: 8px 10px;
+  cursor: pointer;
+  text-align: center;
+  font-weight: 700;
+}
+
+.next-song-button input {
+  display: none;
+}

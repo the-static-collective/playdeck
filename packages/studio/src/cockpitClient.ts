@@ -2,11 +2,13 @@ import type {
   StudioAssetPayload,
   StudioCommitPayload,
   StudioCommitResult,
+  StudioNextSongPayload,
+  StudioNextSongResult,
 } from "./cockpitTypes";
 import type {BrowserStudioBundle} from "./browserBundle";
 import type {StudioBundle} from "./types";
 
-const fileToPayload = async (
+export const fileToPayload = async (
   file: File,
 ): Promise<StudioAssetPayload> => {
   const buffer = await file.arrayBuffer();
@@ -31,16 +33,20 @@ export const buildStudioCommitPayload = async ({
   loaded,
   session,
   inherit,
+  extraAssets = {},
 }: {
   loaded: BrowserStudioBundle;
   session: StudioBundle;
   inherit: boolean;
+  extraAssets?: Record<string, StudioAssetPayload>;
 }): Promise<StudioCommitPayload> => {
   const assets: Record<string, StudioAssetPayload> = {};
 
   for (const [logical, file] of Object.entries(loaded.assetFiles)) {
     assets[logical] = await fileToPayload(file);
   }
+
+  Object.assign(assets, extraAssets);
 
   return {
     deck: session.deck,
@@ -69,6 +75,43 @@ export const commitStudioPerformance = async (
     throw new Error(
       result.error ??
         `Studio commit failed with HTTP ${response.status}`,
+    );
+  }
+
+  return result;
+};
+
+export const assetPayloadToObjectUrl = (
+  asset: StudioAssetPayload,
+): string => {
+  const binary = atob(asset.base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return URL.createObjectURL(
+    new Blob([bytes], {
+      type: asset.mime ?? "application/octet-stream",
+    }),
+  );
+};
+
+export const prepareStudioNextSong = async (
+  payload: StudioNextSongPayload,
+): Promise<StudioNextSongResult> => {
+  const response = await fetch("/api/studio/next-song", {
+    method: "POST",
+    headers: {"content-type": "application/json"},
+    body: JSON.stringify(payload),
+  });
+
+  const result = (await response.json()) as
+    StudioNextSongResult & {error?: string};
+
+  if (!response.ok || result.error) {
+    throw new Error(
+      result.error ??
+        `Next Song preparation failed with HTTP ${response.status}`,
     );
   }
 

@@ -31,3 +31,17 @@ export type StudioCommitResult = {
   inheritedDeck?: DeckSpec;
   newAssets: Record<string, StudioAssetPayload>;
 };
+
+export type StudioNextSongPayload = {
+  deck: DeckSpec;
+  worldRule: WorldRule;
+  priorPlan: CompositionPlan;
+  audio: StudioAssetPayload;
+};
+
+export type StudioNextSongResult = {
+  track: TrackSpec;
+  envelope: EnvelopePoint[];
+  plan: CompositionPlan;
+  audioAsset: StudioAssetPayload;
+};

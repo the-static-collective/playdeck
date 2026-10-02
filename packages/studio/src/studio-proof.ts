@@ -5,19 +5,36 @@ import {
 } from "node:fs";
 import {join, relative} from "node:path";
 import {fileURLToPath} from "node:url";
-import type {StudioAssetPayload, StudioCommitPayload} from "./cockpitTypes";
+import type {
+  StudioAssetPayload,
+  StudioCommitPayload,
+  StudioNextSongPayload,
+} from "./cockpitTypes";
 import {parseBundleStrings} from "./bundle";
 import {commitStudioPayload} from "./commitServer";
+import {prepareNextSong} from "./nextSongServer";
 import {recomposeStudioPlan} from "./recompose";
 
 const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
 const bundleRoot = join(repoRoot, "out", "command-001");
 const proofOutput = join(repoRoot, "out", "studio-cockpit-proof");
 const proofScratch = join(repoRoot, ".playdeck-studio-proof");
+const secondAudio = join(
+  repoRoot,
+  "out",
+  "album-001-inputs",
+  "02-answer.wav",
+);
 
 if (!statSync(bundleRoot).isDirectory()) {
   throw new Error(
     "Studio proof requires out/command-001 from command:proof.",
+  );
+}
+
+if (!statSync(secondAudio).isFile()) {
+  throw new Error(
+    "Studio Next Song proof requires album:proof to run first.",
   );
 }
 
@@ -67,12 +84,12 @@ const assetMapRaw = JSON.parse(
   entries["asset-map.bundle.json"] ?? "{}",
 ) as Record<string, string>;
 
-const assets: Record<string, StudioAssetPayload> = {};
+const baseAssets: Record<string, StudioAssetPayload> = {};
 
 for (const [logical, uri] of Object.entries(assetMapRaw)) {
   const rel = uri.replace(/^bundle:\/\//, "");
   const local = join(bundleRoot, rel);
-  assets[logical] = {
+  baseAssets[logical] = {
     name: local.split(/[\\/]/).pop() ?? "asset.bin",
     base64: readFileSync(local).toString("base64"),
   };
@@ -83,12 +100,12 @@ if (!audioRel) {
   throw new Error("Studio proof cannot resolve the bundled audio source.");
 }
 const audioFile = join(bundleRoot, audioRel);
-assets[session.track.source] = {
+baseAssets[session.track.source] = {
   name: audioFile.split(/[\\/]/).pop() ?? "audio.bin",
   base64: readFileSync(audioFile).toString("base64"),
 };
 
-const payload: StudioCommitPayload = {
+const firstPayload: StudioCommitPayload = {
   deck: session.deck,
   track: {
     ...session.track,
@@ -100,45 +117,100 @@ const payload: StudioCommitPayload = {
   },
   plan: recomposed,
   envelope: session.envelope,
-  assets,
+  assets: baseAssets,
   inherit: true,
 };
 
-const committed = await commitStudioPayload(payload, {
+const first = await commitStudioPayload(firstPayload, {
   outputRoot: proofOutput,
   scratchRoot: proofScratch,
 });
 
-if (committed.receipt.phase !== "rendered") {
-  throw new Error("Studio cockpit proof did not seal a rendered receipt.");
+if (!first.inheritedDeck || first.inheritedDeck.cards.length !== 5) {
+  throw new Error(
+    "Studio 002 crossing must yield the 5-card inherited deck.",
+  );
 }
 
-if (!committed.inheritedDeck) {
-  throw new Error("Studio cockpit proof did not derive an inherited next deck.");
+const nextPayload: StudioNextSongPayload = {
+  deck: first.inheritedDeck,
+  worldRule: firstPayload.worldRule,
+  priorPlan: recomposed,
+  audio: {
+    name: "02-answer.wav",
+    mime: "audio/wav",
+    base64: readFileSync(secondAudio).toString("base64"),
+  },
+};
+
+const next = await prepareNextSong(nextPayload, {
+  scratchRoot: join(proofScratch, "next"),
+});
+
+if (next.plan.deckId !== first.inheritedDeck.id) {
+  throw new Error("Next Song was not composed against the inherited deck.");
+}
+
+const arrive = next.plan.events.find((event) => event.type === "arrive");
+if (arrive?.params?.from !== "inherited-room") {
+  throw new Error(
+    `Next Song should enter from inherited-room, got ${String(arrive?.params?.from)}`,
+  );
+}
+
+if (next.track.id === session.track.id) {
+  throw new Error("Next Song must receive a distinct track identity.");
+}
+
+const secondAssets: Record<string, StudioAssetPayload> = {
+  ...baseAssets,
+  ...first.newAssets,
+  [next.track.source]: next.audioAsset,
+};
+
+const second = await commitStudioPayload(
+  {
+    deck: first.inheritedDeck,
+    track: next.track,
+    worldRule: firstPayload.worldRule,
+    plan: next.plan,
+    envelope: next.envelope,
+    assets: secondAssets,
+    inherit: true,
+  },
+  {
+    outputRoot: proofOutput,
+    scratchRoot: proofScratch,
+  },
+);
+
+if (!second.inheritedDeck) {
+  throw new Error("Next Song render did not derive another inherited deck.");
+}
+
+if (second.inheritedDeck.cards.length !== 6) {
+  throw new Error(
+    `Expected 6 cards after second cockpit crossing, got ${second.inheritedDeck.cards.length}`,
+  );
 }
 
 if (
-  committed.inheritedDeck.inheritedReceipt !==
-  `receipt:${committed.receipt.id}`
+  second.inheritedDeck.inheritedReceipt !==
+  `receipt:${second.receipt.id}`
 ) {
-  throw new Error("Studio cockpit next deck did not cross from the new receipt.");
-}
-
-if (committed.inheritedDeck.cards.length <= session.deck.cards.length) {
-  throw new Error(
-    "Studio cockpit proof should materialize and inherit its bounded awakening.",
-  );
+  throw new Error("Second inherited deck does not cite the second receipt.");
 }
 
 console.log(
   JSON.stringify({
     bundle: session.bundleName,
-    originalReceipt: session.receipt.id,
-    committedReceipt: committed.receipt.id,
-    receiptPhase: committed.receipt.phase,
-    inputCards: session.deck.cards.length,
-    nextDeckCards: committed.inheritedDeck.cards.length,
-    outputDir: committed.outputDir,
-    newAssets: Object.keys(committed.newAssets).length,
+    firstReceipt: first.receipt.id,
+    firstDeckCards: first.inheritedDeck.cards.length,
+    nextTrack: next.track.id,
+    nextIntroFrom: arrive?.params?.from,
+    secondReceipt: second.receipt.id,
+    secondDeckCards: second.inheritedDeck.cards.length,
+    firstNewAssets: Object.keys(first.newAssets).length,
+    secondNewAssets: Object.keys(second.newAssets).length,
   }),
 );
