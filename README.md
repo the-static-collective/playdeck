@@ -510,25 +510,37 @@ The plan survives the renderer.
 
 ## Studio
 
-Eventually, apps/studio should let a human:
+Studio 001 is live in `packages/studio`.
 
-- drop in a folder of images
-- add a song
-- inspect cards
-- flip cards over
-- annotate relationships
+~~~bash
+npm run studio
+~~~
+
+Open any rendered PlayDeck output bundle in the browser. The Studio reconstructs its logical media bindings and opens the actual Remotion composition in `@remotion/player`.
+
+A human can:
+
+- inspect the ordered deck and bundled card media
+- move cards earlier or later
 - assign or remove traits
-- choose a world rule
-- scrub section gates
-- watch the deck compose
-- override a decision
-- hold a card out
-- wake one card up
-- render
-- inspect the receipt
-- carry the resulting deck forward
+- edit temperament
+- allow or disallow awakening
+- edit physical / surface / transition / awakening world rules
+- edit section-gate timing
+- click any event or gate to scrub the player
+- watch edits recompose through the real composer
+- inspect the witnessed receipt beside the editable preview
+- export the locally edited deck or plan
 
-The studio should expose composition without requiring the user to become an editor.
+Studio preserves a hard boundary between exploration and history:
+
+~~~text
+STUDIO OVERRIDE != HISTORY
+LOCAL RECOMPOSITION != RECEIPT
+PREVIEW != PERFORMANCE EVIDENCE
+~~~
+
+A local edit becomes memory only after it crosses the existing render -> evidence -> sealed receipt path.
 
 ---
 
@@ -652,7 +664,7 @@ That was enough reason to make a repository.
 [x] Remotion renderer
 [x] receipt writer
 [x] guarded continuity crossing
-[ ] preview studio
+[x] preview studio
 [x] folder -> deck ingestion
 [x] folder + song command
 [x] persistent album deck
@@ -661,4 +673,4 @@ That was enough reason to make a repository.
 
 Current phase:
 
-> **a still can now wake, move for a bounded interval, freeze into a new card, and survive into the next song.**
+> **the whole instrument now has a human-facing control room.**
