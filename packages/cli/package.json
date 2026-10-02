@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "bin": {
-    "playdeck": "./src/cli.ts"
+    "playdeck": "./bin/playdeck.mjs"
   },
   "scripts": {
     "playdeck": "tsx src/cli.ts",

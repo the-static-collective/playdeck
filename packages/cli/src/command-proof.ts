@@ -1,9 +1,9 @@
-import {mkdirSync, writeFileSync} from "node:fs";
+import {mkdirSync, readFileSync, rmSync, writeFileSync} from "node:fs";
+import {spawnSync} from "node:child_process";
+import {join} from "node:path";
 import {fileURLToPath} from "node:url";
-import {runPlaydeck} from "./runPlaydeck";
-import {canInheritReceipt} from "@playdeck/receipts";
 import type {PerformanceReceipt} from "@playdeck/core";
-import {readFileSync} from "node:fs";
+import {canInheritReceipt} from "@playdeck/receipts";
 
 const writeTestWav = (
   path: string,
@@ -35,10 +35,7 @@ const writeTestWav = (
       0.22 * Math.sin(2 * Math.PI * 620 * t) +
       0.12 * Math.sin(2 * Math.PI * 3100 * t);
     const pulse = Math.sin(2 * Math.PI * 2 * t) > 0 ? 1 : 0.55;
-    const sample = Math.max(
-      -1,
-      Math.min(1, amplitude * pulse),
-    );
+    const sample = Math.max(-1, Math.min(1, amplitude * pulse));
     buffer.writeInt16LE(Math.round(sample * 32767), 44 + i * 2);
   }
 
@@ -59,26 +56,50 @@ const inputAudio = fileURLToPath(
 mkdirSync(fileURLToPath(new URL("../../../out/", import.meta.url)), {
   recursive: true,
 });
+rmSync(outputDir, {recursive: true, force: true});
 writeTestWav(inputAudio);
 
-const result = await runPlaydeck({
-  id: "command-001",
-  images: imageFolder,
-  audio: inputAudio,
-  outputDir,
-  title: "Command 001",
-  render: true,
-  fps: 24,
-  width: 640,
-  height: 360,
-});
+const command = join(
+  repoRoot,
+  "node_modules",
+  ".bin",
+  process.platform === "win32" ? "playdeck.cmd" : "playdeck",
+);
 
-if (!result.video || !result.renderedReceipt) {
-  throw new Error("Command proof did not produce a video and rendered receipt.");
+const result = spawnSync(
+  command,
+  [
+    imageFolder,
+    inputAudio,
+    "--id",
+    "command-001",
+    "--out",
+    outputDir,
+    "--title",
+    "Command 001",
+    "--fps",
+    "24",
+    "--width",
+    "640",
+    "--height",
+    "360",
+  ],
+  {
+    cwd: repoRoot,
+    stdio: "inherit",
+  },
+);
+
+if (result.error) throw result.error;
+if (result.status !== 0) {
+  throw new Error(
+    `Literal playdeck CLI failed with status ${String(result.status)}`,
+  );
 }
 
+const renderedReceiptPath = join(outputDir, "receipt.rendered.json");
 const rendered = JSON.parse(
-  readFileSync(result.renderedReceipt, "utf8"),
+  readFileSync(renderedReceiptPath, "utf8"),
 ) as PerformanceReceipt;
 
 if (!canInheritReceipt(rendered)) {
@@ -92,8 +113,9 @@ if (!evidence?.sha256 || evidence.scope !== "full-performance") {
 
 console.log(
   JSON.stringify({
-    video: result.video,
-    receipt: result.renderedReceipt,
+    command,
+    video: join(outputDir, "final.mp4"),
+    receipt: renderedReceiptPath,
     phase: rendered.phase,
     inheritable: canInheritReceipt(rendered),
     sha256: evidence.sha256,
