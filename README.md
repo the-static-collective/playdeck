@@ -638,11 +638,11 @@ That was enough reason to make a repository.
 ## Status
 
 ~~~text
-[ ] schema
-[ ] Genesis 001 fixture
-[ ] track analysis artifact
+[x] schema
+[x] Genesis 001 fixture
+[x] track analysis artifact
 [ ] composer
-[ ] Remotion renderer
+[x] Remotion renderer
 [ ] receipt writer
 [ ] preview studio
 [ ] folder -> deck ingestion
