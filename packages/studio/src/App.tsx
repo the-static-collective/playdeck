@@ -28,8 +28,14 @@ import {
 import type {
   StudioAssetPayload,
   StudioCommitResult,
+  StudioQueuedSong,
 } from "./cockpitTypes";
 import {recomposeStudioPlan} from "./recompose";
+import {
+  enqueueStudioSongs,
+  moveStudioQueuedSong,
+  removeStudioQueuedSong,
+} from "./sessionQueue";
 import type {StudioBundle} from "./types";
 
 const splitTags = (value: string) =>
@@ -93,6 +99,8 @@ export const App: React.FC = () => {
   const [runtimeAssetUrls, setRuntimeAssetUrls] =
     useState<Record<string, string>>({});
   const [preparingNext, setPreparingNext] = useState(false);
+  const [albumQueue, setAlbumQueue] =
+    useState<StudioQueuedSong[]>([]);
   const dynamicUrls = useRef<string[]>([]);
 
   useEffect(
@@ -167,6 +175,7 @@ export const App: React.FC = () => {
       dynamicUrls.current = [];
       setRuntimeAssets({});
       setRuntimeAssetUrls({});
+      setAlbumQueue([]);
       setLastCommit(null);
       setDirty(false);
     } catch (reason) {
@@ -223,12 +232,30 @@ export const App: React.FC = () => {
     }
   };
 
-  const chooseNextSong = async (
+  const addAlbumSongs = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
-    const file = event.target.files?.[0];
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) return;
+
+    try {
+      setError(null);
+      const audio = await Promise.all(files.map(fileToPayload));
+      setAlbumQueue((current) =>
+        enqueueStudioSongs(current, audio),
+      );
+      event.target.value = "";
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : String(reason),
+      );
+    }
+  };
+
+  const prepareQueuedSong = async () => {
+    const queued = albumQueue[0];
     if (
-      !file ||
+      !queued ||
       !session ||
       !lastCommit?.inheritedDeck ||
       preparingNext
@@ -239,15 +266,14 @@ export const App: React.FC = () => {
     try {
       setError(null);
       setPreparingNext(true);
-      const audio = await fileToPayload(file);
       const next = await prepareStudioNextSong({
         deck: lastCommit.inheritedDeck,
         worldRule: session.worldRule,
         priorPlan: session.plan,
-        audio,
+        audio: queued.audio,
       });
 
-      const audioUrl = URL.createObjectURL(file);
+      const audioUrl = assetPayloadToObjectUrl(queued.audio);
       dynamicUrls.current.push(audioUrl);
 
       setRuntimeAssets((current) => ({
@@ -259,11 +285,12 @@ export const App: React.FC = () => {
         [next.track.source]: audioUrl,
       }));
 
+      const inheritedDeck = lastCommit.inheritedDeck;
       setSession((current) =>
         current
           ? {
               ...current,
-              deck: lastCommit.inheritedDeck!,
+              deck: inheritedDeck,
               track: next.track,
               envelope: next.envelope,
               plan: next.plan,
@@ -272,13 +299,14 @@ export const App: React.FC = () => {
           : current,
       );
       setSelectedCard(
-        lastCommit.inheritedDeck.order?.[0] ??
-          lastCommit.inheritedDeck.cards[0]?.id ??
+        inheritedDeck.order?.[0] ??
+          inheritedDeck.cards[0]?.id ??
           null,
       );
+      setAlbumQueue((current) => current.slice(1));
+      setLastCommit(null);
       setDirty(true);
       player.current?.seekTo(0);
-      event.target.value = "";
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : String(reason),
@@ -336,7 +364,7 @@ export const App: React.FC = () => {
     return (
       <main className="landing">
         <section className="landing-card">
-          <div className="eyebrow">PLAYDECK / STUDIO 003</div>
+          <div className="eyebrow">PLAYDECK / STUDIO 004</div>
           <h1>Open the room.</h1>
           <p>
             Load any PlayDeck output bundle. Studio reconstructs its
@@ -373,7 +401,7 @@ export const App: React.FC = () => {
     <main className="studio-shell">
       <header className="topbar">
         <div>
-          <div className="eyebrow">PLAYDECK / STUDIO 003</div>
+          <div className="eyebrow">PLAYDECK / STUDIO 004</div>
           <h1>{session.deck.title ?? session.deck.id}</h1>
         </div>
         <div className="top-actions">
@@ -698,19 +726,112 @@ export const App: React.FC = () => {
                   >
                     Export next deck
                   </button>
-                  <label className="next-song-button">
-                    {preparingNext ? "Preparing…" : "Choose next song"}
-                    <input
-                      type="file"
-                      accept="audio/*,.mp3,.wav,.m4a,.flac,.ogg"
-                      disabled={preparingNext}
-                      onChange={chooseNextSong}
-                    />
-                  </label>
                 </>
               ) : null}
             </div>
           ) : null}
+
+          <div className="album-session">
+            <div className="album-session-heading">
+              <div>
+                <span className="panel-kicker">ALBUM SESSION</span>
+                <strong>{session.track.title ?? session.track.id}</strong>
+              </div>
+              <span>{albumQueue.length} queued</span>
+            </div>
+
+            <label className="next-song-button">
+              Add songs
+              <input
+                type="file"
+                multiple
+                accept="audio/*,.mp3,.wav,.m4a,.flac,.ogg"
+                onChange={addAlbumSongs}
+              />
+            </label>
+
+            {albumQueue.length > 0 ? (
+              <div className="album-queue">
+                {albumQueue.map((queued, index) => (
+                  <div className="album-queue-item" key={queued.id}>
+                    <span className="queue-number">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <div className="queue-name">
+                      <strong>{queued.name}</strong>
+                      <small>
+                        future audio · no plan yet
+                      </small>
+                    </div>
+                    <div className="queue-actions">
+                      <button
+                        disabled={index === 0}
+                        onClick={() =>
+                          setAlbumQueue((current) =>
+                            moveStudioQueuedSong(
+                              current,
+                              queued.id,
+                              -1,
+                            ),
+                          )
+                        }
+                      >
+                        ↑
+                      </button>
+                      <button
+                        disabled={index === albumQueue.length - 1}
+                        onClick={() =>
+                          setAlbumQueue((current) =>
+                            moveStudioQueuedSong(
+                              current,
+                              queued.id,
+                              1,
+                            ),
+                          )
+                        }
+                      >
+                        ↓
+                      </button>
+                      <button
+                        onClick={() =>
+                          setAlbumQueue((current) =>
+                            removeStudioQueuedSong(
+                              current,
+                              queued.id,
+                            ),
+                          )
+                        }
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="queue-empty">
+                Add several songs now. Their order is visible, but their
+                plans remain unborn until continuity reaches them.
+              </div>
+            )}
+
+            {albumQueue.length > 0 ? (
+              <button
+                className="prepare-queued-button"
+                disabled={
+                  preparingNext ||
+                  !lastCommit?.inheritedDeck
+                }
+                onClick={prepareQueuedSong}
+              >
+                {preparingNext
+                  ? "Preparing next crossing…"
+                  : lastCommit?.inheritedDeck
+                    ? `Prepare next: ${albumQueue[0].name}`
+                    : "Render + seal current song to unlock next"}
+              </button>
+            ) : null}
+          </div>
 
           <div className="receipt-box">
             <span className="panel-kicker">RECEIPT</span>

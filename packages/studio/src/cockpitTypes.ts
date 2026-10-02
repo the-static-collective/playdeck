@@ -45,3 +45,9 @@ export type StudioNextSongResult = {
   plan: CompositionPlan;
   audioAsset: StudioAssetPayload;
 };
+
+export type StudioQueuedSong = {
+  id: string;
+  name: string;
+  audio: StudioAssetPayload;
+};
