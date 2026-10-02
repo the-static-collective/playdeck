@@ -647,10 +647,11 @@ That was enough reason to make a repository.
 [x] guarded continuity crossing
 [ ] preview studio
 [x] folder -> deck ingestion
+[x] folder + song command
 [ ] persistent album deck
 [ ] bounded card awakening
 ~~~
 
 Current phase:
 
-> **the deck can now be found in a folder, deal itself, tell prophecy from memory, and carry witnessed state across the next door.**
+> **folder + song -> room is now an executable crossing.**
