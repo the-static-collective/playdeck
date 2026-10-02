@@ -41,6 +41,9 @@ jobs:
       - name: Prove folder + song command with full render
         run: npm run command:proof
 
+      - name: Prove persistent three-track album deck
+        run: npm run album:proof
+
       - name: Render Genesis hero still
         run: npm --workspace @playdeck/render-remotion run still:genesis
 
@@ -60,4 +63,10 @@ jobs:
             out/command-001/plan.json
             out/command-001/receipt.rendered.json
             out/command-001/envelope.json
+            out/album-001/album.json
+            out/album-001/final-deck.json
+            out/album-001/tracks/*/deck.json
+            out/album-001/tracks/*/plan.json
+            out/album-001/tracks/*/receipt.rendered.json
+            out/album-001/tracks/*/final.mp4
           if-no-files-found: warn

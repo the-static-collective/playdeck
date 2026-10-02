@@ -17,7 +17,7 @@ import {
 } from "node:path";
 import {fileURLToPath} from "node:url";
 import {spawnSync} from "node:child_process";
-import type {TrackSpec, WorldRule} from "@playdeck/core";
+import type {DeckSpec, TrackSpec, WorldRule} from "@playdeck/core";
 import {analyzeAudio} from "@playdeck/audio-analysis";
 import {composeDeck, assertValidCompositionPlan} from "@playdeck/composer";
 import {ingestFolder} from "@playdeck/ingest";
@@ -30,7 +30,22 @@ import {defaultWorldRule} from "./defaultWorld";
 import {sha256File} from "./hash";
 
 export type RunPlaydeckOptions = {
+  /**
+   * Unique performance/job id.
+   */
   id: string;
+
+  /**
+   * Stable deck identity. Defaults to id for one-off performances.
+   */
+  deckId?: string;
+
+  /**
+   * Optional already-existing deck. Album runtimes use this to carry
+   * witnessed state forward without re-ingesting the folder.
+   */
+  deck?: DeckSpec;
+
   images: string;
   audio: string;
   outputDir: string;
@@ -133,10 +148,12 @@ export const runPlaydeck = async (
 
   mkdirSync(outputDir, {recursive: true});
 
-  const deck = ingestFolder(images, {
-    deckId: options.id,
+  const stableDeckId = options.deck?.id ?? options.deckId ?? options.id;
+
+  const deck = options.deck ?? ingestFolder(images, {
+    deckId: stableDeckId,
     title: options.title,
-    sourcePrefix: `asset://${options.id}`,
+    sourcePrefix: `asset://${stableDeckId}`,
   });
 
   const analysis = analyzeAudio(audio, {

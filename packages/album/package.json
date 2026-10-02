@@ -1,19 +1,21 @@
 {
-  "name": "@playdeck/cli",
+  "name": "@playdeck/album",
   "version": "0.0.1",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "bin": {
-    "playdeck": "./bin/playdeck.mjs"
+    "playdeck-album": "./bin/playdeck-album.mjs"
   },
   "scripts": {
-    "playdeck": "tsx src/cli.ts",
-    "command:proof": "tsx src/command-proof.ts",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "album:proof": "tsx src/album-proof.ts"
   },
   "dependencies": {
-    "@playdeck/audio-analysis": "0.0.1",
-    "@playdeck/composer": "0.0.1",
+    "@playdeck/cli": "0.0.1",
+    "@playdeck/continuity": "0.0.1",
     "@playdeck/core": "0.0.1",
     "@playdeck/ingest": "0.0.1",
     "@playdeck/receipts": "0.0.1"
@@ -22,8 +24,5 @@
     "@types/node": "^22.18.0",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2"
-  },
-  "exports": {
-    ".": "./src/index.ts"
   }
 }
