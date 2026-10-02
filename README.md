@@ -510,7 +510,7 @@ The plan survives the renderer.
 
 ## Studio
 
-Studio 004 is live in `packages/studio`.
+Studio 005 is live in `packages/studio`.
 
 ~~~bash
 npm run studio
@@ -542,6 +542,11 @@ A human can:
 - reorder or remove that future stack before it reaches continuity
 - expose future song identity/order without inventing future plans
 - advance only the front queued song after the current receipt yields its inherited deck
+- save the entire living cockpit as one portable `.playdeck-session.json` capsule
+- resume current deck / track / plan / world / media without replaying history
+- preserve full receipt history accumulated in Studio
+- preserve generated descendant media and the current continuity checkpoint
+- preserve still-unborn queued songs as audio-only future possibilities
 
 The cockpit commit is local-only and bounded. The browser sends structured state plus selected bundle media to its own localhost Studio server; a dedicated worker performs the render. It does not expose arbitrary shell execution.
 
@@ -618,6 +623,30 @@ NEXT INHERITED DECK
 ~~~
 
 Songs deeper in the queue are known as files and order only. They have **no CompositionPlan yet**. Reordering the queue therefore changes possibility, not history.
+
+Studio 005 makes that living state portable:
+
+~~~text
+CURRENT COCKPIT
+  |
+  | Save session
+  v
+.playdeck-session.json
+  |
+  | close / move / reopen
+  v
+SAME CURRENT STATE
+  |
+  +-- current deck + current plan
+  +-- world rule + audio envelope
+  +-- portable media bytes
+  +-- generated descendants
+  +-- witnessed receipt history
+  +-- last sealed continuity checkpoint
+  +-- unborn future queue
+~~~
+
+Resume is not a crossing. It does not render, mutate the deck, or mint a receipt. A saved dirty proposal resumes dirty; a saved sealed checkpoint resumes with exactly the authority it already had.
 
 ---
 
@@ -745,6 +774,7 @@ That was enough reason to make a repository.
 [x] studio render -> seal -> inherit cockpit
 [x] studio next-song inherited album loop
 [x] studio album-session future queue
+[x] studio portable session save / resume
 [x] folder -> deck ingestion
 [x] folder + song command
 [x] persistent album deck
@@ -753,4 +783,4 @@ That was enough reason to make a repository.
 
 Current phase:
 
-> **the cockpit can now see an album ahead without pretending its future has already happened.**
+> **the living album can now leave the machine and return without losing its place in time.**
