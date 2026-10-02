@@ -510,7 +510,7 @@ The plan survives the renderer.
 
 ## Studio
 
-Studio 001 is live in `packages/studio`.
+Studio 002 is live in `packages/studio`.
 
 ~~~bash
 npm run studio
@@ -531,6 +531,11 @@ A human can:
 - watch edits recompose through the real composer
 - inspect the witnessed receipt beside the editable preview
 - export the locally edited deck or plan
+- render the edited state through the real Remotion runtime
+- seal a new full-performance receipt from the rendered evidence
+- optionally derive and export the inherited next deck
+
+The cockpit commit is local-only and bounded. The browser sends structured state plus selected bundle media to its own localhost Studio server; a dedicated worker performs the render. It does not expose arbitrary shell execution.
 
 Studio preserves a hard boundary between exploration and history:
 
@@ -541,6 +546,24 @@ PREVIEW != PERFORMANCE EVIDENCE
 ~~~
 
 A local edit becomes memory only after it crosses the existing render -> evidence -> sealed receipt path.
+
+Studio 002 now exposes that crossing directly:
+
+~~~text
+EDIT
+ ↓
+LOCAL RECOMPOSITION
+ ↓
+RENDER + SEAL
+ ↓
+RENDERED RECEIPT
+ ↓
+OPTIONAL deck.after.json
+ ↓
+NEXT PERFORMANCE
+~~~
+
+The commit ID is content-addressed from the edited state **and the selected asset bytes**, so changing media without changing filenames still creates a distinct performance identity.
 
 ---
 
@@ -665,6 +688,7 @@ That was enough reason to make a repository.
 [x] receipt writer
 [x] guarded continuity crossing
 [x] preview studio
+[x] studio render -> seal -> inherit cockpit
 [x] folder -> deck ingestion
 [x] folder + song command
 [x] persistent album deck
@@ -673,4 +697,4 @@ That was enough reason to make a repository.
 
 Current phase:
 
-> **the whole instrument now has a human-facing control room.**
+> **the control room can now commit a witnessed performance back into the instrument.**
