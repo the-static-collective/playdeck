@@ -18,6 +18,11 @@ import {
   type BrowserStudioBundle,
 } from "./browserBundle";
 import {downloadJson} from "./download";
+import {
+  buildStudioCommitPayload,
+  commitStudioPerformance,
+} from "./cockpitClient";
+import type {StudioCommitResult} from "./cockpitTypes";
 import {recomposeStudioPlan} from "./recompose";
 import type {StudioBundle} from "./types";
 
@@ -73,6 +78,10 @@ export const App: React.FC = () => {
     useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [committing, setCommitting] = useState(false);
+  const [inheritAfterRender, setInheritAfterRender] = useState(true);
+  const [lastCommit, setLastCommit] =
+    useState<StudioCommitResult | null>(null);
 
   useEffect(
     () => () => loaded?.dispose(),
@@ -132,11 +141,40 @@ export const App: React.FC = () => {
       setLoaded(next);
       setSession(next);
       setSelectedCard(next.deck.order?.[0] ?? next.deck.cards[0]?.id ?? null);
+      setLastCommit(null);
       setDirty(false);
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : String(reason),
       );
+    }
+  };
+
+  const commitPerformance = async () => {
+    if (!loaded || !session || committing) return;
+
+    try {
+      setError(null);
+      setCommitting(true);
+      const payload = await buildStudioCommitPayload({
+        loaded,
+        session,
+        inherit: inheritAfterRender,
+      });
+      const result = await commitStudioPerformance(payload);
+      setLastCommit(result);
+      setSession((current) =>
+        current
+          ? {...current, receipt: result.receipt}
+          : current,
+      );
+      setDirty(false);
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : String(reason),
+      );
+    } finally {
+      setCommitting(false);
     }
   };
 
@@ -256,6 +294,23 @@ export const App: React.FC = () => {
             }
           >
             Export plan
+          </button>
+          <label className="inherit-toggle">
+            <input
+              type="checkbox"
+              checked={inheritAfterRender}
+              onChange={(event) =>
+                setInheritAfterRender(event.target.checked)
+              }
+            />
+            prepare next deck
+          </label>
+          <button
+            className="commit-button"
+            disabled={committing}
+            onClick={commitPerformance}
+          >
+            {committing ? "Rendering…" : "Render + seal"}
           </button>
         </div>
       </header>
@@ -512,6 +567,32 @@ export const App: React.FC = () => {
             ))}
           </div>
 
+          {lastCommit ? (
+            <div className="commit-result">
+              <span className="panel-kicker">LAST COMMIT</span>
+              <strong>{lastCommit.receipt.phase}</strong>
+              <div>{lastCommit.id}</div>
+              <div>{lastCommit.outputDir}</div>
+              {lastCommit.inheritedDeck ? (
+                <>
+                  <div>
+                    next deck: {lastCommit.inheritedDeck.cards.length} cards
+                  </div>
+                  <button
+                    onClick={() =>
+                      downloadJson(
+                        "deck.after.json",
+                        lastCommit.inheritedDeck,
+                      )
+                    }
+                  >
+                    Export next deck
+                  </button>
+                </>
+              ) : null}
+            </div>
+          ) : null}
+
           <div className="receipt-box">
             <span className="panel-kicker">RECEIPT</span>
             {session.receipt ? (
@@ -531,11 +612,13 @@ export const App: React.FC = () => {
             )}
           </div>
 
+          {error ? <div className="error">{error}</div> : null}
+
           {dirty ? (
             <div className="local-law">
-              These edits recompose a local preview. They do not alter the
-              witnessed receipt or claim that awakening media was
-              rematerialized.
+              These edits are still local proposals. "Render + seal"
+              rematerializes bounded awakenings, renders the complete
+              performance, hashes the evidence, and creates a new receipt.
             </div>
           ) : null}
         </aside>

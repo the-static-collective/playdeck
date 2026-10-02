@@ -25,6 +25,7 @@ const textLike = (name: string) =>
 
 export type BrowserStudioBundle = StudioBundle & {
   assetUrls: Record<string, string>;
+  assetFiles: Record<string, File>;
   dispose: () => void;
 };
 
@@ -54,6 +55,7 @@ export const loadBrowserBundle = async (
   );
 
   const assetUrls: Record<string, string> = {};
+  const assetFiles: Record<string, File> = {};
   const created: string[] = [];
 
   for (const [logical, relative] of Object.entries(
@@ -65,11 +67,13 @@ export const loadBrowserBundle = async (
     const url = URL.createObjectURL(file);
     created.push(url);
     assetUrls[logical] = url;
+    assetFiles[logical] = file;
   }
 
   return {
     ...bundle,
     assetUrls,
+    assetFiles,
     dispose: () => {
       created.forEach((url) => URL.revokeObjectURL(url));
     },

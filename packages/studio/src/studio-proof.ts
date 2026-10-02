@@ -5,11 +5,15 @@ import {
 } from "node:fs";
 import {join, relative} from "node:path";
 import {fileURLToPath} from "node:url";
+import type {StudioAssetPayload, StudioCommitPayload} from "./cockpitTypes";
 import {parseBundleStrings} from "./bundle";
+import {commitStudioPayload} from "./commitServer";
 import {recomposeStudioPlan} from "./recompose";
 
 const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
 const bundleRoot = join(repoRoot, "out", "command-001");
+const proofOutput = join(repoRoot, "out", "studio-cockpit-proof");
+const proofScratch = join(repoRoot, ".playdeck-studio-proof");
 
 if (!statSync(bundleRoot).isDirectory()) {
   throw new Error(
@@ -46,12 +50,6 @@ if (session.receipt?.phase !== "rendered") {
   );
 }
 
-if (!session.assetBindings[session.track.source]) {
-  throw new Error(
-    "Studio failed to reconstruct the bundle audio binding.",
-  );
-}
-
 const recomposed = recomposeStudioPlan({
   deck: session.deck,
   track: {
@@ -60,27 +58,87 @@ const recomposed = recomposeStudioPlan({
   },
   worldRule: {
     ...session.worldRule,
-    surface: "studio-proof-surface",
+    surface: "studio-cockpit-proof",
   },
   priorPlan: session.plan,
 });
 
+const assetMapRaw = JSON.parse(
+  entries["asset-map.bundle.json"] ?? "{}",
+) as Record<string, string>;
+
+const assets: Record<string, StudioAssetPayload> = {};
+
+for (const [logical, uri] of Object.entries(assetMapRaw)) {
+  const rel = uri.replace(/^bundle:\/\//, "");
+  const local = join(bundleRoot, rel);
+  assets[logical] = {
+    name: local.split(/[\\/]/).pop() ?? "asset.bin",
+    base64: readFileSync(local).toString("base64"),
+  };
+}
+
+const audioRel = session.assetBindings[session.track.source];
+if (!audioRel) {
+  throw new Error("Studio proof cannot resolve the bundled audio source.");
+}
+const audioFile = join(bundleRoot, audioRel);
+assets[session.track.source] = {
+  name: audioFile.split(/[\\/]/).pop() ?? "audio.bin",
+  base64: readFileSync(audioFile).toString("base64"),
+};
+
+const payload: StudioCommitPayload = {
+  deck: session.deck,
+  track: {
+    ...session.track,
+    gates: session.plan.gates,
+  },
+  worldRule: {
+    ...session.worldRule,
+    surface: "studio-cockpit-proof",
+  },
+  plan: recomposed,
+  envelope: session.envelope,
+  assets,
+  inherit: true,
+};
+
+const committed = await commitStudioPayload(payload, {
+  outputRoot: proofOutput,
+  scratchRoot: proofScratch,
+});
+
+if (committed.receipt.phase !== "rendered") {
+  throw new Error("Studio cockpit proof did not seal a rendered receipt.");
+}
+
+if (!committed.inheritedDeck) {
+  throw new Error("Studio cockpit proof did not derive an inherited next deck.");
+}
+
 if (
-  recomposed.worldRuleId !== session.worldRule.id ||
-  recomposed.events.length === 0
+  committed.inheritedDeck.inheritedReceipt !==
+  `receipt:${committed.receipt.id}`
 ) {
+  throw new Error("Studio cockpit next deck did not cross from the new receipt.");
+}
+
+if (committed.inheritedDeck.cards.length <= session.deck.cards.length) {
   throw new Error(
-    "Studio local recomposition failed.",
+    "Studio cockpit proof should materialize and inherit its bounded awakening.",
   );
 }
 
 console.log(
   JSON.stringify({
     bundle: session.bundleName,
-    cards: session.deck.cards.length,
-    receiptPhase: session.receipt.phase,
-    assetBindings: Object.keys(session.assetBindings).length,
-    originalEvents: session.plan.events.length,
-    recomposedEvents: recomposed.events.length,
+    originalReceipt: session.receipt.id,
+    committedReceipt: committed.receipt.id,
+    receiptPhase: committed.receipt.phase,
+    inputCards: session.deck.cards.length,
+    nextDeckCards: committed.inheritedDeck.cards.length,
+    outputDir: committed.outputDir,
+    newAssets: Object.keys(committed.newAssets).length,
   }),
 );

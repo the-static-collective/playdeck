@@ -15,7 +15,10 @@
     "@playdeck/render-remotion": "0.0.1",
     "@remotion/player": "4.0.530",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "@playdeck/cli": "0.0.1",
+    "@playdeck/continuity": "0.0.1",
+    "@playdeck/receipts": "0.0.1"
   },
   "devDependencies": {
     "@types/node": "^22.18.0",
