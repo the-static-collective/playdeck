@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "0.1",
+  "title": "Ingest 001 — Postcards",
+  "defaults": {
+    "permissions": {
+      "flip": true,
+      "fold": true,
+      "fracture": true
+    },
+    "metadata": {
+      "fixture": "ingest-001"
+    }
+  },
+  "cards": {
+    "01-weather-arrival.svg": {
+      "traits": ["weather", "arrival"],
+      "temperament": ["opening"]
+    },
+    "02-signal-thread.svg": {
+      "traits": ["signal", "thread"],
+      "temperament": ["answering", "chorus-bound"],
+      "permissions": {"merge": true}
+    },
+    "03-room-center.svg": {
+      "traits": ["room", "center"],
+      "temperament": ["chorus-bound"],
+      "permissions": {"merge": true}
+    },
+    "04-doorway-lamp.svg": {
+      "traits": ["doorway", "lamp", "threshold"],
+      "temperament": ["portal", "late-awakening"],
+      "permissions": {"portal": true, "awaken": true}
+    }
+  },
+  "metadata": {
+    "purpose": "filesystem ingestion proof"
+  }
+}

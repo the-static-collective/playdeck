@@ -23,6 +23,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Prove folder to deck ingestion
+        run: npm run ingest:proof
+
       - name: Compose Genesis from deck + track + world rule
         run: npm run compose:genesis
 
@@ -42,5 +45,7 @@ jobs:
           path: |
             packages/render-remotion/out/genesis-001.png
             out/genesis-001-plan.generated.json
+            out/ingest-001-deck.generated.json
+            out/ingest-001-plan.generated.json
             out/genesis-001-receipt.projected.json
           if-no-files-found: warn

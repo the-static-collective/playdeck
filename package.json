@@ -11,6 +11,7 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "compose:genesis": "npm --workspace @playdeck/composer run compose:genesis",
     "receipt:genesis": "npm --workspace @playdeck/receipts run receipt:genesis",
-    "continuity:proof": "npm --workspace @playdeck/continuity run continuity:proof"
+    "continuity:proof": "npm --workspace @playdeck/continuity run continuity:proof",
+    "ingest:proof": "npm --workspace @playdeck/ingest run ingest:proof"
   }
 }

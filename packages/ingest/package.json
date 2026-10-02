@@ -1,0 +1,25 @@
+{
+  "name": "@playdeck/ingest",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "bin": {
+    "playdeck-ingest": "./src/cli.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "ingest:proof": "tsx src/ingest-proof.ts"
+  },
+  "dependencies": {
+    "@playdeck/core": "0.0.1",
+    "@playdeck/composer": "0.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}
