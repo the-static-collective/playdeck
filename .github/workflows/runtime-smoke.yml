@@ -23,6 +23,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Compose Genesis from deck + track + world rule
+        run: npm run compose:genesis
+
       - name: Render Genesis hero still
         run: npm --workspace @playdeck/render-remotion run still:genesis
 
@@ -30,5 +33,7 @@ jobs:
         if: always()
         with:
           name: genesis-001-smoke
-          path: packages/render-remotion/out/genesis-001.png
+          path: |
+            packages/render-remotion/out/genesis-001.png
+            out/genesis-001-plan.generated.json
           if-no-files-found: warn

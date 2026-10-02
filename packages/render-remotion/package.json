@@ -14,7 +14,8 @@
     "@remotion/media": "4.0.530",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "remotion": "4.0.530"
+    "remotion": "4.0.530",
+    "@playdeck/composer": "0.0.1"
   },
   "devDependencies": {
     "@remotion/cli": "4.0.530",

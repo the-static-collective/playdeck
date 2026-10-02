@@ -19,7 +19,7 @@ The fixture itself should not care.
 - `deck.json` — nine addressable cards cut from one shared 3×3 sheet
 - `track.json` — duration, approximate tempo, and observed structural gates
 - `world-rule.json` — the first `flipbook` world rule
-- `plan.json` — the deterministic composition plan that turns the deck into a room
+- `plan.json` — the original hand-authored reference plan; retained as provenance, no longer required by the renderer
 - `static-collective-envelope.json` — measured 1 Hz low/mid/high motion pressure from the source track
 - `asset-map.cdn.json` — replaceable bindings from logical asset URIs to currently hosted media
 
@@ -39,3 +39,17 @@ Genesis 001 is successful when a renderer can consume these files and reproduce 
 The exact pixels may differ between renderers.
 
 The **composition law** should survive.
+
+## Composer crossing
+
+Genesis 001 is now rendered from a plan generated at runtime by `@playdeck/composer`.
+
+The composer receives only:
+
+- `deck.json`
+- `track.json`
+- `world-rule.json`
+
+The original `plan.json` remains in this folder as a historical reference specimen. It is not imported by the Remotion runtime.
+
+CI also writes `out/genesis-001-plan.generated.json` so the generated plan can be inspected independently of the video.
