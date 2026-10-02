@@ -500,11 +500,12 @@ const prepareBranchFuture = async (
     },
   );
 
-  if (!committed.inheritedDeck) {
+  const inheritedDeck = committed.inheritedDeck;
+  if (!inheritedDeck) {
     throw new Error("Branched future failed to inherit.");
   }
 
-  return {prepared, committed};
+  return {prepared, committed, inheritedDeck};
 };
 
 const amberFuture = await prepareBranchFuture(
@@ -527,7 +528,7 @@ for (const [archive, future] of [
   [branchBlue, blueFuture],
 ] as const) {
   const marker =
-    future.committed.inheritedDeck.metadata?.studioBranch;
+    future.inheritedDeck.metadata?.studioBranch;
   if (
     !marker ||
     typeof marker !== "object" ||
@@ -540,7 +541,7 @@ for (const [archive, future] of [
   }
 
   const continuity =
-    future.committed.inheritedDeck.metadata?.continuity as
+    future.inheritedDeck.metadata?.continuity as
       | {history?: unknown[]}
       | undefined;
   if ((continuity?.history?.length ?? 0) !== 3) {
