@@ -14,6 +14,14 @@ export type StudioSessionCheckpoint = {
   inheritedDeck?: DeckSpec;
 };
 
+export type StudioSessionBranch = {
+  id: string;
+  label: string;
+  parentId?: string;
+  forkedFromReceipt: string;
+  ancestorReceiptIds: string[];
+};
+
 export type StudioSessionArchive = {
   kind: "playdeck-studio-session";
   schemaVersion: "0.1";
@@ -22,6 +30,7 @@ export type StudioSessionArchive = {
   queue: StudioQueuedSong[];
   receipts: PerformanceReceipt[];
   checkpoint?: StudioSessionCheckpoint;
+  branch?: StudioSessionBranch;
   preferences: {
     inheritAfterRender: boolean;
   };
@@ -98,6 +107,45 @@ export const assertPortableStudioSession = (
     );
   }
 
+  if (archive.branch) {
+    if (!archive.checkpoint?.inheritedDeck) {
+      throw new Error(
+        "A branched session requires an inherited checkpoint deck.",
+      );
+    }
+
+    if (
+      archive.branch.forkedFromReceipt !==
+      archive.checkpoint.receipt.id
+    ) {
+      throw new Error(
+        "Branch origin must match the checkpoint receipt.",
+      );
+    }
+
+    const branchMarker =
+      archive.checkpoint.inheritedDeck.metadata?.studioBranch;
+    if (
+      !branchMarker ||
+      typeof branchMarker !== "object" ||
+      Array.isArray(branchMarker) ||
+      (branchMarker as Record<string, unknown>).id !==
+        archive.branch.id
+    ) {
+      throw new Error(
+        "Branch checkpoint deck is missing its branch identity.",
+      );
+    }
+
+    for (const receiptId of archive.branch.ancestorReceiptIds) {
+      if (!receiptIds.has(receiptId)) {
+        throw new Error(
+          `Branch ancestor receipt "${receiptId}" is missing from session history.`,
+        );
+      }
+    }
+  }
+
   if (archive.checkpoint) {
     if (archive.checkpoint.receipt.phase !== "rendered") {
       throw new Error(
@@ -147,6 +195,7 @@ export const createStudioSessionArchive = ({
   queue,
   receipts,
   checkpoint,
+  branch,
   inheritAfterRender,
   dirty,
 }: {
@@ -155,6 +204,7 @@ export const createStudioSessionArchive = ({
   queue: StudioQueuedSong[];
   receipts: PerformanceReceipt[];
   checkpoint?: StudioSessionCheckpoint;
+  branch?: StudioSessionBranch;
   inheritAfterRender: boolean;
   dirty: boolean;
 }): StudioSessionArchive => {
@@ -172,6 +222,7 @@ export const createStudioSessionArchive = ({
     queue,
     receipts: history,
     checkpoint,
+    branch,
     preferences: {
       inheritAfterRender,
     },
@@ -195,4 +246,82 @@ export const serializeStudioSessionArchive = (
 ): string => {
   assertPortableStudioSession(archive);
   return JSON.stringify(archive, null, 2) + "\n";
+};
+
+
+const branchSlug = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 36) || "branch";
+
+const branchHash = (value: string): string => {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+};
+
+export const forkStudioSessionArchive = (
+  source: StudioSessionArchive,
+  label: string,
+): StudioSessionArchive => {
+  assertPortableStudioSession(source);
+
+  const checkpoint = source.checkpoint;
+  if (!checkpoint?.inheritedDeck) {
+    throw new Error(
+      "Forking requires a sealed checkpoint with an inherited deck.",
+    );
+  }
+
+  const cleanLabel = label.trim();
+  if (!cleanLabel) {
+    throw new Error("Branch label cannot be empty.");
+  }
+
+  const parentId = source.branch?.id;
+  const ancestorReceiptIds = source.receipts.map(
+    (receipt) => receipt.id,
+  );
+  const id =
+    `${branchSlug(cleanLabel)}-${branchHash(
+      [
+        parentId ?? "root",
+        checkpoint.receipt.id,
+        cleanLabel,
+      ].join(":"),
+    )}`;
+
+  const branch: StudioSessionBranch = {
+    id,
+    label: cleanLabel,
+    ...(parentId ? {parentId} : {}),
+    forkedFromReceipt: checkpoint.receipt.id,
+    ancestorReceiptIds,
+  };
+
+  const inheritedDeck: DeckSpec = {
+    ...checkpoint.inheritedDeck,
+    metadata: {
+      ...(checkpoint.inheritedDeck.metadata ?? {}),
+      studioBranch: branch,
+    },
+  };
+
+  const forked: StudioSessionArchive = {
+    ...source,
+    checkpoint: {
+      ...checkpoint,
+      inheritedDeck,
+    },
+    branch,
+  };
+
+  assertPortableStudioSession(forked);
+  return forked;
 };

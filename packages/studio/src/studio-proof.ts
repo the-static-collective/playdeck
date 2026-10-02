@@ -17,6 +17,7 @@ import {prepareNextSong} from "./nextSongServer";
 import {recomposeStudioPlan} from "./recompose";
 import {
   createStudioSessionArchive,
+  forkStudioSessionArchive,
   parseStudioSessionArchive,
   serializeStudioSessionArchive,
 } from "./sessionArchive";
@@ -337,6 +338,43 @@ if (
   );
 }
 
+const branchAmber = forkStudioSessionArchive(
+  resumed,
+  "amber-world",
+);
+const branchBlue = forkStudioSessionArchive(
+  resumed,
+  "blue-world",
+);
+
+if (
+  branchAmber.branch?.forkedFromReceipt !== second.receipt.id ||
+  branchBlue.branch?.forkedFromReceipt !== second.receipt.id
+) {
+  throw new Error(
+    "Sibling branches must cite the same witnessed fork receipt.",
+  );
+}
+
+if (branchAmber.branch?.id === branchBlue.branch?.id) {
+  throw new Error("Sibling branch identities must be distinct.");
+}
+
+if (
+  JSON.stringify(branchAmber.receipts) !==
+  JSON.stringify(branchBlue.receipts)
+) {
+  throw new Error(
+    "Sibling branches must preserve identical receipt ancestry at fork time.",
+  );
+}
+
+const amberDeck = branchAmber.checkpoint?.inheritedDeck;
+const blueDeck = branchBlue.checkpoint?.inheritedDeck;
+if (!amberDeck || !blueDeck) {
+  throw new Error("Sibling branches are missing forked checkpoint decks.");
+}
+
 const restoredThird = resumed.queue[0];
 const restoredDeck = resumed.checkpoint.inheritedDeck;
 
@@ -411,6 +449,107 @@ if ((continuity?.history?.length ?? 0) !== 3) {
   );
 }
 
+
+const prepareBranchFuture = async (
+  archive: typeof branchAmber,
+  surface: string,
+) => {
+  const deck = archive.checkpoint?.inheritedDeck;
+  const queued = archive.queue[0];
+  if (!deck || !queued) {
+    throw new Error("Branch future is missing deck or queued audio.");
+  }
+
+  const prepared = await prepareNextSong(
+    {
+      deck,
+      worldRule: {
+        ...archive.session.worldRule,
+        surface,
+      },
+      priorPlan: archive.session.plan,
+      audio: queued.audio,
+    },
+    {
+      scratchRoot: join(
+        proofScratch,
+        `branch-${archive.branch?.id ?? surface}`,
+      ),
+    },
+  );
+
+  const committed = await commitStudioPayload(
+    {
+      deck,
+      track: prepared.track,
+      worldRule: {
+        ...archive.session.worldRule,
+        surface,
+      },
+      plan: prepared.plan,
+      envelope: prepared.envelope,
+      assets: {
+        ...archive.assets,
+        [prepared.track.source]: prepared.audioAsset,
+      },
+      inherit: true,
+    },
+    {
+      outputRoot: proofOutput,
+      scratchRoot: proofScratch,
+    },
+  );
+
+  if (!committed.inheritedDeck) {
+    throw new Error("Branched future failed to inherit.");
+  }
+
+  return {prepared, committed};
+};
+
+const amberFuture = await prepareBranchFuture(
+  branchAmber,
+  "amber-branch-surface",
+);
+const blueFuture = await prepareBranchFuture(
+  branchBlue,
+  "blue-branch-surface",
+);
+
+if (amberFuture.committed.receipt.id === blueFuture.committed.receipt.id) {
+  throw new Error(
+    "Divergent sibling futures must seal distinct receipts.",
+  );
+}
+
+for (const [archive, future] of [
+  [branchAmber, amberFuture],
+  [branchBlue, blueFuture],
+] as const) {
+  const marker =
+    future.committed.inheritedDeck.metadata?.studioBranch;
+  if (
+    !marker ||
+    typeof marker !== "object" ||
+    Array.isArray(marker) ||
+    (marker as Record<string, unknown>).id !== archive.branch?.id
+  ) {
+    throw new Error(
+      "Branch identity did not survive its future continuity crossing.",
+    );
+  }
+
+  const continuity =
+    future.committed.inheritedDeck.metadata?.continuity as
+      | {history?: unknown[]}
+      | undefined;
+  if ((continuity?.history?.length ?? 0) !== 3) {
+    throw new Error(
+      "Each sibling future should extend the shared two-crossing past by exactly one.",
+    );
+  }
+}
+
 console.log(
   JSON.stringify({
     bundle: session.bundleName,
@@ -431,6 +570,12 @@ console.log(
     resumedCheckpointCards:
       resumed.checkpoint?.inheritedDeck?.cards.length ?? 0,
     sessionFile: sessionPath,
+    branchForkReceipt: second.receipt.id,
+    amberBranch: branchAmber.branch?.id,
+    blueBranch: branchBlue.branch?.id,
+    amberReceipt: amberFuture.committed.receipt.id,
+    blueReceipt: blueFuture.committed.receipt.id,
+    siblingSharedReceiptCount: branchAmber.receipts.length,
     firstNewAssets: Object.keys(first.newAssets).length,
     secondNewAssets: Object.keys(second.newAssets).length,
     thirdNewAssets: Object.keys(third.newAssets).length,

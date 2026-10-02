@@ -662,3 +662,47 @@ button {
   background: rgba(111, 132, 196, 0.1);
   border-color: rgba(111, 132, 196, 0.28);
 }
+
+
+.branch-button {
+  border: 1px solid rgba(188, 128, 218, 0.38);
+  background: rgba(146, 88, 177, 0.12);
+  color: #ddb8ef;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.branch-button:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+.branch-marker {
+  margin: 8px 0 10px;
+  padding: 9px 10px;
+  border-left: 2px solid rgba(190, 128, 220, 0.72);
+  background: rgba(146, 88, 177, 0.08);
+  display: grid;
+  gap: 2px;
+}
+
+.branch-marker span {
+  color: #b18abe;
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  font-weight: 800;
+}
+
+.branch-marker strong {
+  color: #e1c8eb;
+  font-size: 11px;
+}
+
+.branch-marker small {
+  color: #7e7285;
+  font-size: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -35,6 +35,7 @@ import type {
 import {recomposeStudioPlan} from "./recompose";
 import {
   createStudioSessionArchive,
+  forkStudioSessionArchive,
   parseStudioSessionArchive,
 } from "./sessionArchive";
 import {
@@ -230,6 +231,55 @@ export const App: React.FC = () => {
     }
   };
 
+  const restoreSessionArchive = (
+    archive: ReturnType<typeof parseStudioSessionArchive>,
+  ) => {
+    loaded?.dispose();
+    setLoaded(null);
+    dynamicUrls.current.forEach((url) =>
+      URL.revokeObjectURL(url),
+    );
+    dynamicUrls.current = [];
+
+    const urls: Record<string, string> = {};
+    for (const [logical, asset] of Object.entries(
+      archive.assets,
+    )) {
+      const url = assetPayloadToObjectUrl(asset);
+      dynamicUrls.current.push(url);
+      urls[logical] = url;
+    }
+
+    setRuntimeAssets(archive.assets);
+    setRuntimeAssetUrls(urls);
+    setSession(archive.session);
+    setAlbumQueue(archive.queue);
+    setReceiptHistory(archive.receipts);
+    setInheritAfterRender(
+      archive.preferences.inheritAfterRender,
+    );
+    setDirty(archive.dirty);
+    setLastCommit(
+      archive.checkpoint
+        ? {
+            id: archive.checkpoint.id,
+            outputDir: "session://portable",
+            video: "session://portable",
+            receipt: archive.checkpoint.receipt,
+            inheritedDeck:
+              archive.checkpoint.inheritedDeck,
+            newAssets: {},
+          }
+        : null,
+    );
+    setSelectedCard(
+      archive.session.deck.order?.[0] ??
+        archive.session.deck.cards[0]?.id ??
+        null,
+    );
+    player.current?.seekTo(0);
+  };
+
   const openSession = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -238,55 +288,55 @@ export const App: React.FC = () => {
 
     try {
       setError(null);
-      const archive = parseStudioSessionArchive(
-        await file.text(),
+      restoreSessionArchive(
+        parseStudioSessionArchive(await file.text()),
       );
-
-      loaded?.dispose();
-      setLoaded(null);
-      dynamicUrls.current.forEach((url) =>
-        URL.revokeObjectURL(url),
-      );
-      dynamicUrls.current = [];
-
-      const urls: Record<string, string> = {};
-      for (const [logical, asset] of Object.entries(
-        archive.assets,
-      )) {
-        const url = assetPayloadToObjectUrl(asset);
-        dynamicUrls.current.push(url);
-        urls[logical] = url;
-      }
-
-      setRuntimeAssets(archive.assets);
-      setRuntimeAssetUrls(urls);
-      setSession(archive.session);
-      setAlbumQueue(archive.queue);
-      setReceiptHistory(archive.receipts);
-      setInheritAfterRender(
-        archive.preferences.inheritAfterRender,
-      );
-      setDirty(archive.dirty);
-      setLastCommit(
-        archive.checkpoint
-          ? {
-              id: archive.checkpoint.id,
-              outputDir: "session://portable",
-              video: "session://portable",
-              receipt: archive.checkpoint.receipt,
-              inheritedDeck:
-                archive.checkpoint.inheritedDeck,
-              newAssets: {},
-            }
-          : null,
-      );
-      setSelectedCard(
-        archive.session.deck.order?.[0] ??
-          archive.session.deck.cards[0]?.id ??
-          null,
-      );
-      player.current?.seekTo(0);
       event.target.value = "";
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : String(reason),
+      );
+    }
+  };
+
+  const forkTimeline = async () => {
+    if (!session || !lastCommit?.inheritedDeck) return;
+
+    const label = window.prompt(
+      "Name this future branch:",
+      "alternate-world",
+    );
+    if (!label?.trim()) return;
+
+    try {
+      setError(null);
+      const portableAssets = await collectStudioAssets(
+        loaded,
+        runtimeAssets,
+      );
+      const source = createStudioSessionArchive({
+        session,
+        assets: portableAssets,
+        queue: albumQueue,
+        receipts: receiptHistory,
+        checkpoint: {
+          id: lastCommit.id,
+          receipt: lastCommit.receipt,
+          inheritedDeck: lastCommit.inheritedDeck,
+        },
+        inheritAfterRender,
+        dirty,
+      });
+      const forked = forkStudioSessionArchive(
+        source,
+        label,
+      );
+
+      downloadJson(
+        `${session.deck.id}--${forked.branch?.id ?? "branch"}.playdeck-session.json`,
+        forked,
+      );
+      restoreSessionArchive(forked);
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : String(reason),
@@ -479,7 +529,7 @@ export const App: React.FC = () => {
     return (
       <main className="landing">
         <section className="landing-card">
-          <div className="eyebrow">PLAYDECK / STUDIO 005</div>
+          <div className="eyebrow">PLAYDECK / STUDIO 006</div>
           <h1>Open the room.</h1>
           <p>
             Load any PlayDeck output bundle. Studio reconstructs its
@@ -526,7 +576,7 @@ export const App: React.FC = () => {
     <main className="studio-shell">
       <header className="topbar">
         <div>
-          <div className="eyebrow">PLAYDECK / STUDIO 005</div>
+          <div className="eyebrow">PLAYDECK / STUDIO 006</div>
           <h1>{session.deck.title ?? session.deck.id}</h1>
         </div>
         <div className="top-actions">
@@ -555,6 +605,18 @@ export const App: React.FC = () => {
             onClick={saveSession}
           >
             Save session
+          </button>
+          <button
+            className="branch-button"
+            disabled={!lastCommit?.inheritedDeck}
+            onClick={forkTimeline}
+            title={
+              lastCommit?.inheritedDeck
+                ? "Fork a new future from this sealed checkpoint."
+                : "Render + seal a checkpoint before branching."
+            }
+          >
+            Fork timeline
           </button>
           <button
             className="compact-button"
@@ -880,6 +942,33 @@ export const App: React.FC = () => {
                 {albumQueue.length} queued · {receiptHistory.length} receipts
               </span>
             </div>
+
+            {(() => {
+              const marker =
+                session.deck.metadata?.studioBranch ??
+                lastCommit?.inheritedDeck?.metadata?.studioBranch;
+              if (
+                !marker ||
+                typeof marker !== "object" ||
+                Array.isArray(marker)
+              ) {
+                return null;
+              }
+              const branch = marker as {
+                id?: string;
+                label?: string;
+                forkedFromReceipt?: string;
+              };
+              return (
+                <div className="branch-marker">
+                  <span>BRANCH</span>
+                  <strong>{branch.label ?? branch.id}</strong>
+                  <small>
+                    from {branch.forkedFromReceipt ?? "checkpoint"}
+                  </small>
+                </div>
+              );
+            })()}
 
             <label className="next-song-button">
               Add songs
