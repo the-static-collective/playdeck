@@ -1,0 +1,108 @@
+{
+  "schemaVersion": "0.1",
+  "id": "genesis-001-cosmic-flipbook",
+  "title": "Static Collective — Cosmic Flipbook",
+  "sourceSheets": [
+    {
+      "id": "cosmic-sheet",
+      "source": "asset://genesis-001/cosmic-flipbook.png",
+      "rows": 3,
+      "columns": 3
+    }
+  ],
+  "cards": [
+    {
+      "id": "card-01",
+      "source": "asset://genesis-001/cosmic-flipbook.png",
+      "front": {"source": "asset://genesis-001/cosmic-flipbook.png", "crop": {"x": 0.0, "y": 0.0, "width": 0.333333, "height": 0.333333}},
+      "traits": ["weather", "arrival"],
+      "temperament": ["quiet", "opening"],
+      "permissions": {"flip": true, "fold": true, "fracture": true, "portal": true}
+    },
+    {
+      "id": "card-02",
+      "source": "asset://genesis-001/cosmic-flipbook.png",
+      "front": {"source": "asset://genesis-001/cosmic-flipbook.png", "crop": {"x": 0.333333, "y": 0.0, "width": 0.333333, "height": 0.333333}},
+      "traits": ["signal", "thread"],
+      "temperament": ["answering", "restless"],
+      "permissions": {"flip": true, "fold": true, "fracture": true, "merge": true}
+    },
+    {
+      "id": "card-03",
+      "source": "asset://genesis-001/cosmic-flipbook.png",
+      "front": {"source": "asset://genesis-001/cosmic-flipbook.png", "crop": {"x": 0.666667, "y": 0.0, "width": 0.333333, "height": 0.333333}},
+      "traits": ["archive", "witness"],
+      "temperament": ["held", "observing"],
+      "permissions": {"flip": true, "fold": true, "fracture": true}
+    },
+    {
+      "id": "card-04",
+      "source": "asset://genesis-001/cosmic-flipbook.png",
+      "front": {"source": "asset://genesis-001/cosmic-flipbook.png", "crop": {"x": 0.0, "y": 0.333333, "width": 0.333333, "height": 0.333333}},
+      "traits": ["map", "threshold"],
+      "temperament": ["answering", "chorus-bound"],
+      "permissions": {"flip": true, "fold": true, "fracture": true, "portal": true, "merge": true}
+    },
+    {
+      "id": "card-05",
+      "source": "asset://genesis-001/cosmic-flipbook.png",
+      "front": {"source": "asset://genesis-001/cosmic-flipbook.png", "crop": {"x": 0.333333, "y": 0.333333, "width": 0.333333, "height": 0.333333}},
+      "traits": ["room", "center", "door"],
+      "temperament": ["gravity", "chorus-bound", "portal"],
+      "permissions": {"flip": true, "fold": true, "fracture": true, "portal": true, "awaken": true, "merge": true}
+    },
+    {
+      "id": "card-06",
+      "source": "asset://genesis-001/cosmic-flipbook.png",
+      "front": {"source": "asset://genesis-001/cosmic-flipbook.png", "crop": {"x": 0.666667, "y": 0.333333, "width": 0.333333, "height": 0.333333}},
+      "traits": ["memory", "borrowed-tone"],
+      "temperament": ["echoing", "restless"],
+      "permissions": {"flip": true, "fold": true, "fracture": true, "duplicate": true}
+    },
+    {
+      "id": "card-07",
+      "source": "asset://genesis-001/cosmic-flipbook.png",
+      "front": {"source": "asset://genesis-001/cosmic-flipbook.png", "crop": {"x": 0.0, "y": 0.666667, "width": 0.333333, "height": 0.333333}},
+      "traits": ["rough-edge", "fault-line"],
+      "temperament": ["glitching", "restless"],
+      "permissions": {"flip": true, "fold": true, "fracture": true}
+    },
+    {
+      "id": "card-08",
+      "source": "asset://genesis-001/cosmic-flipbook.png",
+      "front": {"source": "asset://genesis-001/cosmic-flipbook.png", "crop": {"x": 0.333333, "y": 0.666667, "width": 0.333333, "height": 0.333333}},
+      "traits": ["matchbook", "flame"],
+      "temperament": ["answering", "chorus-bound"],
+      "permissions": {"flip": true, "fold": true, "fracture": true, "merge": true}
+    },
+    {
+      "id": "card-09",
+      "source": "asset://genesis-001/cosmic-flipbook.png",
+      "front": {"source": "asset://genesis-001/cosmic-flipbook.png", "crop": {"x": 0.666667, "y": 0.666667, "width": 0.333333, "height": 0.333333}},
+      "traits": ["lamp", "stairs", "doorway"],
+      "temperament": ["portal", "late-awakening"],
+      "permissions": {"flip": true, "fold": true, "fracture": true, "portal": true, "awaken": true}
+    }
+  ],
+  "order": [
+    "card-01",
+    "card-02",
+    "card-03",
+    "card-04",
+    "card-05",
+    "card-06",
+    "card-07",
+    "card-08",
+    "card-09"
+  ],
+  "clusters": [
+    {"id": "upper-weather", "cards": ["card-01", "card-02", "card-03"], "kind": "arrival"},
+    {"id": "middle-room", "cards": ["card-04", "card-05", "card-06"], "kind": "assembly"},
+    {"id": "lower-threshold", "cards": ["card-07", "card-08", "card-09"], "kind": "crossing"}
+  ],
+  "metadata": {
+    "origin": "first cosmic flipbook AutoDisco specimen",
+    "layout": "3x3",
+    "assetBinding": "host-resolved logical URI"
+  }
+}
