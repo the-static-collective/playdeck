@@ -32,7 +32,7 @@ const durationToNext = (
   gateIndex: number,
   gates: SectionGate[],
   trackDuration: number,
-) => Math.max(0, (gates[gateIndex + 1]?.at ?? trackDuration) - gate.at);
+) => Math.max(0, Math.round(((gates[gateIndex + 1]?.at ?? trackDuration) - gate.at) * 1000) / 1000);
 
 const eventId = (gate: SectionGate, type: CompositionEvent["type"]) =>
   `event-${gate.id}-${type}`;
@@ -151,7 +151,7 @@ export const composeDeck = ({
           ? cards.length
           : Math.min(
               cards.length,
-              Math.max(1, Math.ceil(cards.length * (0.78 + chorusIndex * 0.22))),
+              Math.max(1, Math.round(cards.length * (0.75 + chorusIndex * 0.25))),
             );
         const cohesion = finalChorus
           ? 1
@@ -200,9 +200,9 @@ export const composeDeck = ({
           duration,
           type: "corrupt",
           cards: all,
-          worldRule: worldRule.transition ?? worldRule.id,
+          worldRule: worldRule.bridge?.worldRule ?? worldRule.transition ?? worldRule.id,
           params: {
-            dialect: worldDialect(worldRule),
+            dialect: worldRule.bridge?.dialect ?? worldDialect(worldRule),
           },
           because:
             "The bridge temporarily interprets the declared world rule as a wrong-medium crossing.",
