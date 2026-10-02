@@ -1,0 +1,26 @@
+{
+  "name": "@playdeck/cli",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "playdeck": "./src/cli.ts"
+  },
+  "scripts": {
+    "playdeck": "tsx src/cli.ts",
+    "command:proof": "tsx src/command-proof.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@playdeck/audio-analysis": "0.0.1",
+    "@playdeck/composer": "0.0.1",
+    "@playdeck/core": "0.0.1",
+    "@playdeck/ingest": "0.0.1",
+    "@playdeck/receipts": "0.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}

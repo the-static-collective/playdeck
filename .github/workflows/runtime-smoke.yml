@@ -35,6 +35,9 @@ jobs:
       - name: Prove guarded continuity with synthetic evidence
         run: npm run continuity:proof
 
+      - name: Prove folder + song command with full render
+        run: npm run command:proof
+
       - name: Render Genesis hero still
         run: npm --workspace @playdeck/render-remotion run still:genesis
 
@@ -48,4 +51,10 @@ jobs:
             out/ingest-001-deck.generated.json
             out/ingest-001-plan.generated.json
             out/genesis-001-receipt.projected.json
+            out/command-001/final.mp4
+            out/command-001/deck.json
+            out/command-001/track.json
+            out/command-001/plan.json
+            out/command-001/receipt.rendered.json
+            out/command-001/envelope.json
           if-no-files-found: warn

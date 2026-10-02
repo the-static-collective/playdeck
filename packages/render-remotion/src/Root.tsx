@@ -3,7 +3,7 @@ import {Composition} from "remotion";
 import type {DeckSpec, TrackSpec, WorldRule} from "@playdeck/core";
 import {assertValidCompositionPlan, composeDeck} from "@playdeck/composer";
 import {PlaydeckComposition} from "./PlaydeckComposition";
-import type {AssetMap, EnvelopePoint} from "./types";
+import type {AssetMap, EnvelopePoint, PlaydeckRenderProps} from "./types";
 
 import deckJson from "../../../examples/genesis-001/deck.json";
 import trackJson from "../../../examples/genesis-001/track.json";
@@ -31,22 +31,45 @@ const plan = composeDeck({
 
 assertValidCompositionPlan(plan, deck);
 
+const defaultProps: PlaydeckRenderProps = {
+  deck,
+  track,
+  worldRule,
+  plan,
+  assets,
+  envelope,
+  debug: false,
+};
+
 export const Root: React.FC = () => (
-  <Composition
-    id="Genesis001"
-    component={PlaydeckComposition}
-    durationInFrames={Math.ceil(plan.duration * plan.fps)}
-    fps={plan.fps}
-    width={plan.width}
-    height={plan.height}
-    defaultProps={{
-      deck,
-      track,
-      worldRule,
-      plan,
-      assets,
-      envelope,
-      debug: false,
-    }}
-  />
+  <>
+    <Composition
+      id="Genesis001"
+      component={PlaydeckComposition}
+      durationInFrames={Math.ceil(plan.duration * plan.fps)}
+      fps={plan.fps}
+      width={plan.width}
+      height={plan.height}
+      defaultProps={defaultProps}
+    />
+
+    <Composition
+      id="Playdeck"
+      component={PlaydeckComposition}
+      durationInFrames={Math.ceil(plan.duration * plan.fps)}
+      fps={plan.fps}
+      width={plan.width}
+      height={plan.height}
+      defaultProps={defaultProps}
+      calculateMetadata={({props}) => ({
+        durationInFrames: Math.max(
+          1,
+          Math.ceil(props.plan.duration * props.plan.fps),
+        ),
+        fps: props.plan.fps,
+        width: props.plan.width,
+        height: props.plan.height,
+      })}
+    />
+  </>
 );

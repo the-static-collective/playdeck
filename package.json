@@ -12,6 +12,7 @@
     "compose:genesis": "npm --workspace @playdeck/composer run compose:genesis",
     "receipt:genesis": "npm --workspace @playdeck/receipts run receipt:genesis",
     "continuity:proof": "npm --workspace @playdeck/continuity run continuity:proof",
-    "ingest:proof": "npm --workspace @playdeck/ingest run ingest:proof"
+    "ingest:proof": "npm --workspace @playdeck/ingest run ingest:proof",
+    "command:proof": "npm --workspace @playdeck/cli run command:proof"
   }
 }
