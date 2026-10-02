@@ -130,6 +130,8 @@ for (const track of album.tracks.slice(1)) {
   }
 }
 
+const descendantFreezeHashes: string[] = [];
+
 for (const track of album.tracks) {
   const receipt = readJson<PerformanceReceipt>(track.receipt);
   if (!canInheritReceipt(receipt)) {
@@ -138,6 +140,25 @@ for (const track of album.tracks) {
   if (!receipt.evidence?.[0]?.sha256) {
     throw new Error(`Track ${track.index} is missing hashed render evidence.`);
   }
+
+  const freezeEvidence = receipt.evidence.find(
+    (item) =>
+      item.kind === "still" &&
+      item.scope === "checkpoint" &&
+      item.renderer === "deterministic-echo-v1",
+  );
+  if (!freezeEvidence?.sha256) {
+    throw new Error(
+      `Track ${track.index} is missing hashed descendant freeze evidence.`,
+    );
+  }
+  descendantFreezeHashes.push(freezeEvidence.sha256);
+}
+
+if (new Set(descendantFreezeHashes).size !== album.tracks.length) {
+  throw new Error(
+    "Each album awakening must freeze into a distinct witnessed descendant.",
+  );
 }
 
 const track2Deck = readJson<DeckSpec>(
@@ -183,5 +204,6 @@ console.log(
     track3FirstVerseCards: track3FirstVerse.cards,
     finalCardCount: finalDeckState.cards.length,
     awakenedCards: awakenedCards.map((card) => card.id),
+    descendantFreezeHashes,
   }),
 );
