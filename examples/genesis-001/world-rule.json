@@ -12,5 +12,13 @@
     "awakening is rare",
     "rough edges remain visible",
     "the final chorus may assemble the deck as one room"
-  ]
+  ],
+  "bridge": {
+    "worldRule": "vhs-machine",
+    "dialect": [
+      "teletext",
+      "cyber-analog-vhs",
+      "machine-flatness"
+    ]
+  }
 }
