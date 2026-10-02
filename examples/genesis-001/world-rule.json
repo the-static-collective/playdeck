@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "0.1",
+  "id": "flipbook",
+  "physical": "hinged-paper-panels",
+  "surface": "cosmic-hand-painted-print",
+  "transition": "contact-sheet-to-room",
+  "awakening": "bounded-portal",
+  "laws": [
+    "panel identity remains recognizable through motion",
+    "audio changes deck physics, not decorative meters",
+    "most motion remains deterministic",
+    "awakening is rare",
+    "rough edges remain visible",
+    "the final chorus may assemble the deck as one room"
+  ]
+}
