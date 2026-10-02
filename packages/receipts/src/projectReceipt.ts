@@ -1,4 +1,5 @@
 import type {
+  CardSpec,
   CompositionEvent,
   CompositionPlan,
   PerformanceReceipt,
@@ -29,9 +30,14 @@ const eventResult = (event: CompositionEvent): string | undefined => {
   }
 };
 
+export type ProjectReceiptOptions = {
+  newCardSpecs?: CardSpec[];
+};
+
 export const projectReceipt = (
   plan: CompositionPlan,
   id = `${plan.id}--receipt`,
+  options: ProjectReceiptOptions = {},
 ): PerformanceReceipt => {
   const finalState = {
     assembledAs: plan.finalState?.assembledAs,
@@ -69,6 +75,13 @@ export const projectReceipt = (
       held: [...finalState.held],
       missing: [...finalState.missing],
       newCards: [...finalState.newCards],
+      newCardSpecs: (options.newCardSpecs ?? []).map((card) => ({
+        ...card,
+        traits: [...(card.traits ?? [])],
+        temperament: [...(card.temperament ?? [])],
+        relationships: [...(card.relationships ?? [])],
+        metadata: {...(card.metadata ?? {})},
+      })),
     },
     metadata: {
       projectedFrom: plan.id,

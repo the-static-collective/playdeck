@@ -1,6 +1,6 @@
 import React, {useMemo} from "react";
 import {AbsoluteFill, useCurrentFrame, useVideoConfig} from "remotion";
-import {Audio} from "@remotion/media";
+import {Audio, Video} from "@remotion/media";
 import {resolveAsset} from "./assets";
 import {sampleEnvelope} from "./envelope";
 import {computeCardLayout} from "./layout";
@@ -89,6 +89,79 @@ export const PlaydeckComposition: React.FC<PlaydeckRenderProps> = ({
           />
         );
       })}
+
+      {plan.events
+        .filter(
+          (event) =>
+            event.type === "awaken" &&
+            typeof event.params?.videoSource === "string" &&
+            event.cards?.[0],
+        )
+        .map((event) => {
+          const cardId = event.cards?.[0];
+          const layout = cardId ? layouts.get(cardId) : undefined;
+          if (!layout) return null;
+
+          return (
+            <Video
+              key={event.id}
+              from={Math.round(event.at * fps)}
+              durationInFrames={Math.max(
+                1,
+                Math.round((event.duration ?? 0) * fps),
+              )}
+              src={resolveAsset(String(event.params?.videoSource), assets)}
+              muted
+              style={{
+                position: "absolute",
+                left: layout.x,
+                top: layout.y,
+                width: layout.width,
+                height: layout.height,
+                objectFit: "cover",
+                overflow: "hidden",
+                scale: `${layout.scale * layout.scaleX} ${layout.scale}`,
+                rotate: `${layout.rotate}deg`,
+                border: "3px solid rgba(255,225,155,.72)",
+                boxShadow: "0 0 38px rgba(180,155,255,.42)",
+                zIndex: layout.zIndex + 220,
+              }}
+            />
+          );
+        })}
+
+      {plan.events
+        .filter(
+          (event) =>
+            event.type === "freeze" &&
+            typeof event.params?.freezeSource === "string" &&
+            event.cards?.[0],
+        )
+        .map((event, index) => {
+          const cardId = event.cards?.[0];
+          const layout = cardId ? layouts.get(cardId) : undefined;
+          if (!layout) return null;
+
+          return (
+            <img
+              key={event.id}
+              src={resolveAsset(String(event.params?.freezeSource), assets)}
+              style={{
+                position: "absolute",
+                left: layout.x + layout.width * (0.5 + index * 0.04),
+                top: layout.y + layout.height * 0.48,
+                width: layout.width * 0.42,
+                height: layout.height * 0.42,
+                objectFit: "cover",
+                opacity: frame >= Math.round(event.at * fps) ? 0.94 : 0,
+                rotate: `${-4 + index * 2}deg`,
+                border: "3px solid rgba(245,218,160,.72)",
+                boxShadow: "0 12px 34px rgba(0,0,0,.48)",
+                zIndex: layout.zIndex + 230,
+              }}
+            />
+          );
+        })}
 
       <CorruptionOverlay activeEvents={activeEvents} high={audio.high} />
 

@@ -308,6 +308,77 @@ export const composeDeck = ({
     }
   });
 
+  const newCards: string[] = [];
+  const awakeningCandidates = cards.filter((card) => card.permissions?.awaken);
+  const awakeningGate =
+    gates.find((gate) => gate.kind === "bridge") ??
+    gates.find((gate) => gate.kind === "breakdown") ??
+    [...chorusGates].reverse()[0];
+
+  if (worldRule.awakening && awakeningCandidates.length > 0 && awakeningGate) {
+    const sourceCardId = selectCards(deck, 1, [
+      "awaken",
+      "portal",
+      "late-awakening",
+      "doorway",
+      "door",
+      "threshold",
+    ])[0];
+
+    const gateIndex = gates.findIndex((gate) => gate.id === awakeningGate.id);
+    const span = durationToNext(
+      awakeningGate,
+      Math.max(0, gateIndex),
+      gates,
+      track.duration,
+    );
+
+    if (sourceCardId && span > 0) {
+      const awakeningDuration = Math.max(
+        1 / (options.fps ?? 24),
+        Math.min(2.5, span * 0.7),
+      );
+      const awakeningAt =
+        awakeningGate.at + Math.max(0, (span - awakeningDuration) / 2);
+      const safeTrackId = track.id.replace(/[^a-zA-Z0-9_-]+/g, "-");
+      const newCardId = `${sourceCardId}--${safeTrackId}--freeze`;
+
+      events.push({
+        id: `event-${awakeningGate.id}-awaken-${sourceCardId}`,
+        at: Math.round(awakeningAt * 1000) / 1000,
+        duration: Math.round(awakeningDuration * 1000) / 1000,
+        type: "awaken",
+        cards: [sourceCardId],
+        params: {
+          sourceCardId,
+          newCardId,
+          awakeningRule: worldRule.awakening,
+        },
+        because:
+          "A card explicitly permitted to awaken receives one bounded moving interval; the composer nominates the crossing but does not fabricate its media.",
+      });
+
+      events.push({
+        id: `event-${awakeningGate.id}-freeze-${newCardId}`,
+        at:
+          Math.round((awakeningAt + awakeningDuration) * 1000) /
+          1000,
+        type: "freeze",
+        cards: [sourceCardId],
+        params: {
+          sourceCardId,
+          newCardId,
+        },
+        because:
+          "The bounded awakening must end by freezing into a new addressable artifact rather than remaining an unbounded moving state.",
+      });
+
+      newCards.push(newCardId);
+    }
+  }
+
+  events.sort((a, b) => a.at - b.at || a.id.localeCompare(b.id));
+
   const hasFinalAssembly = chorusGates.length > 0;
 
   return {
@@ -336,7 +407,7 @@ export const composeDeck = ({
       assembledAs: hasFinalAssembly ? "room" : undefined,
       held: [...held],
       missing: [],
-      newCards: [],
+      newCards,
       notes: [
         "Generated composition state; not inferred by the renderer.",
         "Final frame is not final state.",

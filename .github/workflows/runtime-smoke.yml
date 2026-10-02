@@ -69,4 +69,6 @@ jobs:
             out/album-001/tracks/*/plan.json
             out/album-001/tracks/*/receipt.rendered.json
             out/album-001/tracks/*/final.mp4
+            out/album-001/tracks/*/awakening.json
+            out/album-001/tracks/*/awakenings/**
           if-no-files-found: warn

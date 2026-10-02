@@ -1,3 +1,4 @@
+import type {CardSpec} from "./CardSpec";
 import type {CompositionFinalState} from "./CompositionPlan";
 
 export type ReceiptPhase = "projected" | "rendered";
@@ -59,6 +60,12 @@ export type PerformanceReceipt = {
     held: string[];
     missing: string[];
     newCards: string[];
+
+    /**
+     * Materialized descendants. IDs must correspond to newCards.
+     * A rendered receipt with unresolved newCards is not inheritable.
+     */
+    newCardSpecs: CardSpec[];
   };
 
   metadata?: Record<string, unknown>;

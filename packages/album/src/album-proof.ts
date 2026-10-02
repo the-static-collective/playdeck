@@ -91,6 +91,25 @@ if (album.tracks.length !== 3) {
   throw new Error(`Expected 3 album tracks, got ${album.tracks.length}`);
 }
 
+const finalDeckState = readJson<DeckSpec>(
+  join(outputDir, "final-deck.json"),
+);
+
+if (finalDeckState.cards.length !== 7) {
+  throw new Error(
+    `Expected 4 original + 3 awakened cards, got ${finalDeckState.cards.length}`,
+  );
+}
+
+const awakenedCards = finalDeckState.cards.filter((card) =>
+  card.temperament?.includes("born-from-prior-performance"),
+);
+if (awakenedCards.length !== 3) {
+  throw new Error(
+    `Expected 3 inherited awakened descendants, got ${awakenedCards.length}`,
+  );
+}
+
 if (album.continuityDepth !== 3) {
   throw new Error(
     `Expected continuity depth 3, got ${album.continuityDepth}`,
@@ -162,5 +181,7 @@ console.log(
     track2InputHistory: historyDepth(track2Deck),
     track3InputHistory: historyDepth(track3Deck),
     track3FirstVerseCards: track3FirstVerse.cards,
+    finalCardCount: finalDeckState.cards.length,
+    awakenedCards: awakenedCards.map((card) => card.id),
   }),
 );

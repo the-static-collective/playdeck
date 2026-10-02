@@ -2,10 +2,10 @@ import {
   cpSync,
   existsSync,
   mkdirSync,
-  readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
+import {createHash} from "node:crypto";
 import {
   basename,
   dirname,
@@ -19,6 +19,7 @@ import {fileURLToPath} from "node:url";
 import {spawnSync} from "node:child_process";
 import type {DeckSpec, TrackSpec, WorldRule} from "@playdeck/core";
 import {analyzeAudio} from "@playdeck/audio-analysis";
+import {materializeAwakenings} from "@playdeck/awakening";
 import {composeDeck, assertValidCompositionPlan} from "@playdeck/composer";
 import {ingestFolder} from "@playdeck/ingest";
 import {
@@ -46,6 +47,12 @@ export type RunPlaydeckOptions = {
    */
   deck?: DeckSpec;
 
+  /**
+   * Local source bindings for carried/generated cards.
+   * Logical card identity stays asset://; this map is transport only.
+   */
+  assetSources?: Record<string, string>;
+
   images: string;
   audio: string;
   outputDir: string;
@@ -72,48 +79,94 @@ const writeJson = (file: string, value: unknown) => {
 const loadWorld = (world: WorldRule | undefined): WorldRule =>
   world ?? defaultWorldRule();
 
+const safeAssetName = (logical: string, local: string) => {
+  const digest = createHash("sha1").update(logical).digest("hex").slice(0, 12);
+  return `${digest}${extname(local).toLowerCase() || ".bin"}`;
+};
+
+const resolveDeckAssetSources = (
+  deck: DeckSpec,
+  images: string,
+  supplied: Record<string, string> = {},
+): Record<string, string> => {
+  const resolved: Record<string, string> = {...supplied};
+
+  for (const card of deck.cards) {
+    const logical = card.front?.source ?? card.source;
+    if (resolved[logical]) continue;
+
+    const ingest = card.metadata?.ingest as
+      | {relativePath?: string}
+      | undefined;
+
+    if (ingest?.relativePath) {
+      resolved[logical] = join(images, ingest.relativePath);
+    }
+  }
+
+  return resolved;
+};
+
 const stageJob = ({
   id,
-  images,
+  assetSources,
   audio,
-  deckSources,
+  audioSource,
 }: {
   id: string;
-  images: string;
+  assetSources: Record<string, string>;
   audio: string;
-  deckSources: Array<{source: string; relativePath: string}>;
+  audioSource: string;
 }) => {
   const stageRoot = join(renderPublic, id);
   rmSync(stageRoot, {recursive: true, force: true});
-
-  const imageRoot = join(stageRoot, "images");
-  const audioRoot = join(stageRoot, "audio");
-  mkdirSync(imageRoot, {recursive: true});
-  mkdirSync(audioRoot, {recursive: true});
+  const stagedAssets = join(stageRoot, "assets");
+  mkdirSync(stagedAssets, {recursive: true});
 
   const assets: Record<string, string> = {};
 
-  for (const card of deckSources) {
-    const from = join(images, card.relativePath);
-    const to = join(imageRoot, card.relativePath);
-    mkdirSync(dirname(to), {recursive: true});
-    cpSync(from, to);
-    assets[card.source] = normalizePath(
-      join("playdeck-jobs", id, "images", card.relativePath),
+  for (const [logical, local] of Object.entries(assetSources).sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
+    if (!existsSync(local)) {
+      throw new Error(
+        `Local asset binding for "${logical}" does not exist: ${local}`,
+      );
+    }
+    const name = safeAssetName(logical, local);
+    cpSync(local, join(stagedAssets, name));
+    assets[logical] = normalizePath(
+      join("playdeck-jobs", id, "assets", name),
     );
   }
 
-  const audioName = basename(audio);
-  const stagedAudio = join(audioRoot, audioName);
-  cpSync(audio, stagedAudio);
+  const audioName = `audio-${basename(audio)}`;
+  cpSync(audio, join(stagedAssets, audioName));
+  assets[audioSource] = normalizePath(
+    join("playdeck-jobs", id, "assets", audioName),
+  );
 
-  return {
-    stageRoot,
-    assets,
-    audioStaticPath: normalizePath(
-      join("playdeck-jobs", id, "audio", audioName),
-    ),
-  };
+  return {stageRoot, assets};
+};
+
+const bundleAssets = (
+  outputDir: string,
+  assetSources: Record<string, string>,
+): Record<string, string> => {
+  const target = join(outputDir, "assets", "resolved");
+  mkdirSync(target, {recursive: true});
+  const map: Record<string, string> = {};
+
+  for (const [logical, local] of Object.entries(assetSources).sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
+    if (!existsSync(local)) continue;
+    const name = safeAssetName(logical, local);
+    cpSync(local, join(target, name));
+    map[logical] = `bundle://assets/resolved/${name}`;
+  }
+
+  return map;
 };
 
 const remotionBinary = () => {
@@ -136,6 +189,7 @@ export const runPlaydeck = async (
   video?: string;
   projectedReceipt: string;
   renderedReceipt?: string;
+  assetSources: Record<string, string>;
 }> => {
   const images = resolve(options.images);
   const audio = resolve(options.audio);
@@ -155,6 +209,12 @@ export const runPlaydeck = async (
     title: options.title,
     sourcePrefix: `asset://${stableDeckId}`,
   });
+
+  let assetSources = resolveDeckAssetSources(
+    deck,
+    images,
+    options.assetSources,
+  );
 
   const analysis = analyzeAudio(audio, {
     sampleRate: 8000,
@@ -187,7 +247,7 @@ export const runPlaydeck = async (
 
   const worldRule = loadWorld(options.worldRule);
 
-  const plan = composeDeck({
+  const composedPlan = composeDeck({
     deck,
     track,
     worldRule,
@@ -199,9 +259,26 @@ export const runPlaydeck = async (
     },
   });
 
-  assertValidCompositionPlan(plan, deck);
+  assertValidCompositionPlan(composedPlan, deck);
 
-  const projected = projectReceipt(plan, `${options.id}-receipt`);
+  const awakening = materializeAwakenings({
+    deck,
+    plan: composedPlan,
+    sourceFiles: assetSources,
+    outputDir: join(outputDir, "awakenings"),
+  });
+
+  const plan = awakening.plan;
+  assetSources = {
+    ...assetSources,
+    ...awakening.assetSources,
+  };
+
+  const projected = projectReceipt(
+    plan,
+    `${options.id}-receipt`,
+    {newCardSpecs: awakening.newCards},
+  );
   assertValidReceipt(projected, deck);
 
   writeJson(join(outputDir, "deck.json"), deck);
@@ -209,6 +286,10 @@ export const runPlaydeck = async (
   writeJson(join(outputDir, "world-rule.json"), worldRule);
   writeJson(join(outputDir, "plan.json"), plan);
   writeJson(join(outputDir, "envelope.json"), analysis.envelope);
+  writeJson(
+    join(outputDir, "awakening.json"),
+    awakening.artifacts,
+  );
   const projectedReceiptPath = join(outputDir, "receipt.projected.json");
   writeJson(projectedReceiptPath, projected);
 
@@ -219,39 +300,25 @@ export const runPlaydeck = async (
   mkdirSync(bundleAudio, {recursive: true});
   cpSync(images, bundleImages, {recursive: true});
   cpSync(audio, join(bundleAudio, basename(audio)));
+  writeJson(
+    join(outputDir, "asset-map.bundle.json"),
+    bundleAssets(outputDir, assetSources),
+  );
 
   if (!render) {
     return {
       outputDir,
       projectedReceipt: projectedReceiptPath,
+      assetSources,
     };
   }
 
-  const deckSources = deck.cards.map((card) => {
-    const ingest = card.metadata?.ingest as
-      | {relativePath?: string}
-      | undefined;
-    const relativePath = ingest?.relativePath;
-
-    if (!relativePath) {
-      throw new Error(
-        `Card "${card.id}" lacks ingest.relativePath; generic local staging cannot resolve it.`,
-      );
-    }
-
-    return {
-      source: card.front?.source ?? card.source,
-      relativePath,
-    };
-  });
-
   const staged = stageJob({
     id: options.id,
-    images,
+    assetSources,
     audio,
-    deckSources,
+    audioSource,
   });
-  staged.assets[audioSource] = staged.audioStaticPath;
 
   const renderProps = {
     deck,
@@ -293,6 +360,32 @@ export const runPlaydeck = async (
       );
     }
 
+    const artifactEvidence = [];
+    for (const artifact of awakening.artifacts) {
+      artifactEvidence.push(
+        {
+          kind: "video" as const,
+          uri: `bundle://${normalizePath(relative(outputDir, artifact.videoFile))}`,
+          scope: "checkpoint" as const,
+          renderer: artifact.provider,
+          sha256: await sha256File(artifact.videoFile),
+          notes: [
+            `Bounded awakening for ${artifact.sourceCardId}.`,
+          ],
+        },
+        {
+          kind: "still" as const,
+          uri: `bundle://${normalizePath(relative(outputDir, artifact.freezeFile))}`,
+          scope: "checkpoint" as const,
+          renderer: artifact.provider,
+          sha256: await sha256File(artifact.freezeFile),
+          notes: [
+            `Frozen descendant ${artifact.newCard.id}.`,
+          ],
+        },
+      );
+    }
+
     const rendered = sealReceipt(projected, [
       {
         kind: "video",
@@ -304,6 +397,7 @@ export const runPlaydeck = async (
           "Produced by the generic PlayDeck CLI from the bundled deck, track, world rule, plan, and envelope.",
         ],
       },
+      ...artifactEvidence,
     ]);
 
     assertValidReceipt(rendered, deck);
@@ -315,6 +409,7 @@ export const runPlaydeck = async (
       video,
       projectedReceipt: projectedReceiptPath,
       renderedReceipt: renderedReceiptPath,
+      assetSources,
     };
   } finally {
     if (!options.keepStage) {

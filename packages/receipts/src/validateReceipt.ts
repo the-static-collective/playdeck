@@ -55,9 +55,41 @@ export const validateReceipt = (
     }
   }
 
+  const newCardIds = new Set(receipt.carry.newCards);
+  const specIds = new Set<string>();
+
+  for (const card of receipt.carry.newCardSpecs) {
+    if (specIds.has(card.id)) {
+      errors.push(`duplicate new CardSpec id "${card.id}"`);
+    }
+    specIds.add(card.id);
+
+    if (!newCardIds.has(card.id)) {
+      errors.push(
+        `materialized new CardSpec "${card.id}" is not declared in carry.newCards`,
+      );
+    }
+
+    if (cardIds?.has(card.id)) {
+      errors.push(
+        `materialized new CardSpec "${card.id}" collides with an existing deck card`,
+      );
+    }
+  }
+
+  if (receipt.phase === "rendered") {
+    for (const id of newCardIds) {
+      if (!specIds.has(id)) {
+        errors.push(
+          `rendered receipt has unresolved new card "${id}"`,
+        );
+      }
+    }
+  }
+
   if (receipt.phase === "rendered" && !canInheritReceipt(receipt)) {
     errors.push(
-      "rendered receipt lacks explicit full-performance evidence",
+      "rendered receipt lacks full-performance evidence or resolved descendants",
     );
   }
 

@@ -16,7 +16,8 @@
     "@playdeck/composer": "0.0.1",
     "@playdeck/core": "0.0.1",
     "@playdeck/ingest": "0.0.1",
-    "@playdeck/receipts": "0.0.1"
+    "@playdeck/receipts": "0.0.1",
+    "@playdeck/awakening": "0.0.1"
   },
   "devDependencies": {
     "@types/node": "^22.18.0",

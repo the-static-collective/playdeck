@@ -63,6 +63,10 @@ export const applyReceiptToDeck = (
   const held = new Set(receipt.carry.held);
   const missing = new Set(receipt.carry.missing);
 
+  const descendantIds = new Set(
+    receipt.carry.newCardSpecs.map((card) => card.id),
+  );
+
   const cards = deck.cards.map((card) => {
     const temperament = [...(card.temperament ?? [])];
     const history = priorCardHistory(card.metadata);
@@ -94,6 +98,32 @@ export const applyReceiptToDeck = (
     };
   });
 
+  const descendants = receipt.carry.newCardSpecs.map((card) => ({
+    ...card,
+    temperament: unique([
+      ...(card.temperament ?? []),
+      "carried",
+      "born-from-prior-performance",
+    ]),
+    metadata: {
+      ...(card.metadata ?? {}),
+      continuity: {
+        inheritedFromReceipt: receipt.id,
+        bornFromReceipt: receipt.id,
+        wasHeld: false,
+        wasMissing: false,
+        history: [
+          {
+            inheritedFromReceipt: receipt.id,
+            bornFromReceipt: receipt.id,
+            wasHeld: false,
+            wasMissing: false,
+          },
+        ],
+      },
+    },
+  }));
+
   const currentOrder = deck.order?.length
     ? deck.order
     : deck.cards.map((card) => card.id);
@@ -101,6 +131,9 @@ export const applyReceiptToDeck = (
   const nextOrder = [
     ...receipt.carry.held.filter((id) => currentOrder.includes(id)),
     ...currentOrder.filter((id) => !held.has(id)),
+    ...receipt.carry.newCards.filter(
+      (id) => descendantIds.has(id) && !currentOrder.includes(id),
+    ),
   ];
 
   const historyEntry: ContinuityHistoryEntry = {
@@ -114,7 +147,7 @@ export const applyReceiptToDeck = (
 
   return {
     ...deck,
-    cards,
+    cards: [...cards, ...descendants],
     order: unique(nextOrder),
     inheritedReceipt: `receipt:${receipt.id}`,
     metadata: {

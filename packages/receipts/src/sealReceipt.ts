@@ -3,6 +3,11 @@ import type {
   PerformanceReceipt,
 } from "@playdeck/core";
 
+const descendantsResolved = (receipt: PerformanceReceipt): boolean => {
+  const specs = new Set(receipt.carry.newCardSpecs.map((card) => card.id));
+  return receipt.carry.newCards.every((id) => specs.has(id));
+};
+
 export const sealReceipt = (
   receipt: PerformanceReceipt,
   evidence: PerformanceEvidence[],
@@ -18,6 +23,12 @@ export const sealReceipt = (
   if (!fullPerformance) {
     throw new Error(
       "A receipt requires explicit full-performance evidence before it can be sealed for inheritance.",
+    );
+  }
+
+  if (!descendantsResolved(receipt)) {
+    throw new Error(
+      "A receipt with newCards cannot be sealed until every descendant has a materialized CardSpec.",
     );
   }
 
@@ -39,6 +50,7 @@ export const canInheritReceipt = (
   receipt: PerformanceReceipt,
 ): boolean =>
   receipt.phase === "rendered" &&
+  descendantsResolved(receipt) &&
   Boolean(
     receipt.evidence?.some(
       (item) => item.scope === "full-performance",

@@ -71,6 +71,7 @@ export const runAlbum = async (
   writeJson(join(outputDir, "initial-deck.json"), deck);
 
   const results: AlbumTrackResult[] = [];
+  let assetSources: Record<string, string> = {};
 
   for (let index = 0; index < options.tracks.length; index += 1) {
     const track = options.tracks[index];
@@ -87,6 +88,7 @@ export const runAlbum = async (
       id: performanceId,
       deckId,
       deck,
+      assetSources,
       images,
       audio: track.audio,
       outputDir: trackOutput,
@@ -103,6 +105,8 @@ export const runAlbum = async (
         `Album track ${number} did not produce a full render and sealed receipt.`,
       );
     }
+
+    assetSources = run.assetSources;
 
     const receipt = readJson<PerformanceReceipt>(run.renderedReceipt);
     if (!canInheritReceipt(receipt)) {
@@ -136,6 +140,10 @@ export const runAlbum = async (
 
   const finalDeck = join(outputDir, "final-deck.json");
   writeJson(finalDeck, deck);
+  writeJson(
+    join(outputDir, "asset-sources.json"),
+    assetSources,
+  );
 
   const manifest: AlbumManifest = {
     schemaVersion: "0.1",

@@ -14,7 +14,7 @@ const worldRule = worldRuleJson as WorldRule;
 const firstPlan = composeDeck({
   deck,
   track,
-  worldRule,
+  worldRule: {...worldRule, awakening: undefined},
   options: {id: "continuity-proof-first", fps: 24, width: 1280, height: 720},
 });
 
