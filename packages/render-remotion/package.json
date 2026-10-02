@@ -1,0 +1,25 @@
+{
+  "name": "@playdeck/render-remotion",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "studio": "remotion studio src/index.ts --no-open",
+    "render:genesis": "remotion render src/index.ts Genesis001 out/genesis-001.mp4",
+    "still:genesis": "remotion still src/index.ts Genesis001 out/genesis-001.png --frame=5256",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@playdeck/core": "0.0.1",
+    "@remotion/media": "4.0.530",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "remotion": "4.0.530"
+  },
+  "devDependencies": {
+    "@remotion/cli": "4.0.530",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "typescript": "^5.9.2"
+  }
+}
