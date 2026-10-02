@@ -41,6 +41,16 @@ const worldDialect = (worldRule: WorldRule) =>
   [worldRule.surface, worldRule.transition, worldRule.physical]
     .filter((value): value is string => Boolean(value));
 
+const inheritedAssembly = (deck: DeckSpec): string | undefined => {
+  const continuity = deck.metadata?.continuity;
+  if (!continuity || typeof continuity !== "object" || Array.isArray(continuity)) {
+    return undefined;
+  }
+
+  const assembledAs = (continuity as Record<string, unknown>).assembledAs;
+  return typeof assembledAs === "string" ? assembledAs : undefined;
+};
+
 export const composeDeck = ({
   deck,
   track,
@@ -74,11 +84,16 @@ export const composeDeck = ({
           type: "arrive",
           cards: all,
           params: {
-            from: deck.sourceSheets?.length ? "sheet" : "stack",
+            from: inheritedAssembly(deck)
+              ? `inherited-${inheritedAssembly(deck)}`
+              : deck.sourceSheets?.length
+                ? "sheet"
+                : "stack",
             to: "deck",
           },
-          because:
-            "The deck begins legible as source before its cards become independently addressable.",
+          because: inheritedAssembly(deck)
+            ? "The deck begins from explicitly inherited prior state before becoming independently addressable again."
+            : "The deck begins legible as source before its cards become independently addressable.",
         });
         break;
       }
@@ -98,6 +113,8 @@ export const composeDeck = ({
               "opening",
               "threshold",
               "arrival",
+              "carried",
+              "held-from-prior-performance",
             ]),
             because:
               "The first verse separates a few permissive cards from the source object without dissolving the deck.",

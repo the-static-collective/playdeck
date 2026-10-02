@@ -29,6 +29,9 @@ jobs:
       - name: Project Genesis receipt
         run: npm run receipt:genesis
 
+      - name: Prove guarded continuity with synthetic evidence
+        run: npm run continuity:proof
+
       - name: Render Genesis hero still
         run: npm --workspace @playdeck/render-remotion run still:genesis
 

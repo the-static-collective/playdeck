@@ -1,0 +1,1 @@
+export {applyReceiptToDeck} from "./applyReceiptToDeck";
