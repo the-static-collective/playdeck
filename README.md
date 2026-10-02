@@ -644,6 +644,7 @@ That was enough reason to make a repository.
 [x] composer
 [x] Remotion renderer
 [x] receipt writer
+[x] guarded continuity crossing
 [ ] preview studio
 [ ] folder -> deck ingestion
 [ ] persistent album deck
@@ -652,4 +653,4 @@ That was enough reason to make a repository.
 
 Current phase:
 
-> **the deck can deal itself, and it knows the difference between prophecy and memory.**
+> **the deck can deal itself, tell prophecy from memory, and carry witnessed state across the next door.**
