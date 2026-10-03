@@ -118,11 +118,7 @@ export const TimelineTree: React.FC<{
                 d={
                   `M ${x1} ${y1} C ${bend} ${y1}, ${bend} ${y2}, ${x2} ${y2}`
                 }
-                className={
-                  edge.kind === "fork"
-                    ? "timeline-edge fork"
-                    : "timeline-edge"
-                }
+                className={`timeline-edge ${edge.kind}`}
               />
             );
           })}
@@ -152,9 +148,11 @@ export const TimelineTree: React.FC<{
               <span>
                 {node.kind === "branch"
                   ? "BRANCH"
-                  : node.checkpointId
-                    ? "CHECKPOINT"
-                    : "RECEIPT"}
+                  : node.kind === "relation"
+                    ? "RELATION"
+                    : node.checkpointId
+                      ? "CHECKPOINT"
+                      : "RECEIPT"}
               </span>
               <strong>{node.label}</strong>
               {node.phase ? <small>{node.phase}</small> : null}
