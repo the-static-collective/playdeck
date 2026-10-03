@@ -907,6 +907,158 @@ if ((relationContinuity?.history?.length ?? 0) !== 3) {
   );
 }
 
+const relationFutureSession = {
+  ...relationBranch.session,
+  deck: relationDeck,
+  track: relationPrepared.track,
+  worldRule: relationBranch.session.worldRule,
+  plan: relationPrepared.plan,
+  envelope: relationPrepared.envelope,
+  receipt: relationFuture.receipt,
+};
+const relationFutureReceipts = [
+  ...relationBranch.receipts.filter(
+    (receipt) => receipt.id !== relationFuture.receipt.id,
+  ),
+  relationFuture.receipt,
+];
+const relationFutureAssets: Record<string, StudioAssetPayload> = {
+  ...relationBranch.assets,
+  [relationPrepared.track.source]: relationPrepared.audioAsset,
+  ...relationFuture.newAssets,
+};
+const relationFutureTimeline = appendStudioTimelineCheckpoint(
+  ensureStudioTimeline(relationBranch),
+  {
+    id: relationFuture.id,
+    receipt: relationFuture.receipt,
+    inheritedDeck: relationFuture.inheritedDeck,
+    parentReceiptId: relationBranch.checkpoint?.receipt.id,
+    branchId: relationBranch.branch?.id,
+    state: {
+      session: relationFutureSession,
+      assets: relationFutureAssets,
+      queue: relationBranch.queue.slice(1),
+      receipts: relationFutureReceipts,
+      preferences: relationBranch.preferences,
+      dirty: false,
+    },
+  },
+);
+
+const relationFutureArchive = createStudioSessionArchive({
+  session: relationFutureSession,
+  assets: relationFutureAssets,
+  queue: relationBranch.queue.slice(1),
+  receipts: relationFutureReceipts,
+  checkpoint: {
+    id: relationFuture.id,
+    receipt: relationFuture.receipt,
+    inheritedDeck: relationFuture.inheritedDeck,
+  },
+  branch: relationBranch.branch,
+  timeline: relationFutureTimeline,
+  inheritAfterRender:
+    relationBranch.preferences.inheritAfterRender,
+  dirty: false,
+});
+
+const causalGraph = buildStudioTimelineGraph(
+  ensureStudioTimeline(relationFutureArchive),
+);
+
+const relationNodeId = `relation:${branchRelation.id}`;
+const relationBranchNodeId =
+  `branch:${relationBranch.branch?.id}`;
+const commonReceiptNodeId =
+  `receipt:${second.receipt.id}`;
+const amberReceiptNodeId =
+  `receipt:${amberFuture.committed.receipt.id}`;
+const blueReceiptNodeId =
+  `receipt:${blueFuture.committed.receipt.id}`;
+const relationReceiptNodeId =
+  `receipt:${relationFuture.receipt.id}`;
+
+const requiredCausalEdges = [
+  {
+    kind: "fork",
+    from: commonReceiptNodeId,
+    to: relationBranchNodeId,
+  },
+  {
+    kind: "observes",
+    from: amberReceiptNodeId,
+    to: relationNodeId,
+  },
+  {
+    kind: "observes",
+    from: blueReceiptNodeId,
+    to: relationNodeId,
+  },
+  {
+    kind: "composes",
+    from: relationNodeId,
+    to: relationBranchNodeId,
+  },
+  {
+    kind: "continuity",
+    from: relationBranchNodeId,
+    to: relationReceiptNodeId,
+  },
+] as const;
+
+for (const expected of requiredCausalEdges) {
+  if (
+    !causalGraph.edges.some(
+      (edge) =>
+        edge.kind === expected.kind &&
+        edge.from === expected.from &&
+        edge.to === expected.to,
+    )
+  ) {
+    throw new Error(
+      `Creative causal graph is missing ${expected.kind} edge ${expected.from} -> ${expected.to}.`,
+    );
+  }
+}
+
+if (
+  causalGraph.edges.some(
+    (edge) =>
+      (edge.kind === "fork" || edge.kind === "continuity") &&
+      (edge.from === amberReceiptNodeId ||
+        edge.from === blueReceiptNodeId) &&
+      (edge.to === relationBranchNodeId ||
+        edge.to === relationReceiptNodeId)
+  )
+) {
+  throw new Error(
+    "Observed sibling futures leaked into relation-world ancestry edges.",
+  );
+}
+
+const causalRelation = (
+  relationFutureArchive.timeline?.relations ?? []
+).find((relation) => relation.id === branchRelation.id);
+if (
+  !causalRelation ||
+  causalRelation.resultBranchId !== relationBranch.branch?.id
+) {
+  throw new Error(
+    "Relation artifact was not promoted into first-class causal graph provenance.",
+  );
+}
+
+const causalGraphPath = join(
+  proofOutput,
+  "studio-009-creative-causal-graph.json",
+);
+writeFileSync(
+  causalGraphPath,
+  JSON.stringify(causalGraph, null, 2) + "\n",
+  "utf8",
+);
+
 const relationSessionPath = join(
   proofOutput,
   "studio-008-relation-world.playdeck-session.json",
@@ -975,6 +1127,30 @@ console.log(
           receipt.id === amberFuture.committed.receipt.id ||
           receipt.id === blueFuture.committed.receipt.id,
       ).length,
+    causalGraphNodes: causalGraph.nodes.length,
+    causalGraphEdges: causalGraph.edges.length,
+    causalRelationNodes:
+      causalGraph.nodes.filter(
+        (node) => node.kind === "relation",
+      ).length,
+    causalObservationEdges:
+      causalGraph.edges.filter(
+        (edge) => edge.kind === "observes",
+      ).length,
+    causalCompositionEdges:
+      causalGraph.edges.filter(
+        (edge) => edge.kind === "composes",
+      ).length,
+    falseSiblingAncestryEdges:
+      causalGraph.edges.filter(
+        (edge) =>
+          (edge.kind === "fork" || edge.kind === "continuity") &&
+          (edge.from === amberReceiptNodeId ||
+            edge.from === blueReceiptNodeId) &&
+          (edge.to === relationBranchNodeId ||
+            edge.to === relationReceiptNodeId),
+      ).length,
+    causalGraphPath,
     relationPath,
     relationSessionPath,
     firstNewAssets: Object.keys(first.newAssets).length,
