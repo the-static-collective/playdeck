@@ -20,6 +20,12 @@ import {
   composeStudioRelationBranch,
 } from "./branchRelation";
 import {
+  createStudioPossibilityEcology,
+  keepStudioPossibility,
+  scrapeStudioPossibilityEcology,
+} from "./possibilityEcology";
+import {
+  appendStudioPossibilityEcology,
   appendStudioTimelineCheckpoint,
   buildStudioTimelineGraph,
   createStudioSessionArchive,
@@ -1049,6 +1055,410 @@ if (
   );
 }
 
+const ecologyOne = createStudioPossibilityEcology(
+  ensureStudioTimeline(relationBranch),
+  branchRelation.id,
+);
+if (
+  ecologyOne.proposals.length !== 6 ||
+  ecologyOne.capsule.authorityClass !== "influence-only" ||
+  ecologyOne.proposals.some(
+    (proposal) => proposal.authorityClass !== "proposal",
+  )
+) {
+  throw new Error(
+    "Haunted Possibility Ecology did not produce one influence-only capsule and six proposal-only futures.",
+  );
+}
+
+const ecologyOneOpen = createStudioSessionArchive({
+  session: relationBranch.session,
+  assets: relationBranch.assets,
+  queue: relationBranch.queue,
+  receipts: relationBranch.receipts,
+  checkpoint: relationBranch.checkpoint,
+  branch: relationBranch.branch,
+  timeline: appendStudioPossibilityEcology(
+    ensureStudioTimeline(relationBranch),
+    ecologyOne,
+  ),
+  inheritAfterRender:
+    relationBranch.preferences.inheritAfterRender,
+  dirty: relationBranch.dirty,
+});
+
+const branchesBeforeScrape =
+  ensureStudioTimeline(ecologyOneOpen).branches.length;
+const receiptsBeforeScrape = ecologyOneOpen.receipts.length;
+const scraped = scrapeStudioPossibilityEcology(
+  ecologyOneOpen,
+  ecologyOne.id,
+);
+const scrapedEcology = (
+  ensureStudioTimeline(scraped).ecologies ?? []
+).find((ecology) => ecology.id === ecologyOne.id);
+
+if (
+  scrapedEcology?.disposition?.kind !== "SCRAPE" ||
+  ensureStudioTimeline(scraped).branches.length !==
+    branchesBeforeScrape ||
+  scraped.receipts.length !== receiptsBeforeScrape
+) {
+  throw new Error(
+    "SCRAPE must close a proposal family without creating ancestry or a receipt.",
+  );
+}
+
+const ecologyTwo = createStudioPossibilityEcology(
+  ensureStudioTimeline(scraped),
+  branchRelation.id,
+);
+if (
+  ecologyTwo.generation !== ecologyOne.generation + 1 ||
+  ecologyTwo.id === ecologyOne.id
+) {
+  throw new Error(
+    "SCRAPE should permit a distinct deterministic next generation.",
+  );
+}
+
+const ecologyTwoOpen = createStudioSessionArchive({
+  session: scraped.session,
+  assets: scraped.assets,
+  queue: scraped.queue,
+  receipts: scraped.receipts,
+  checkpoint: scraped.checkpoint,
+  branch: scraped.branch,
+  timeline: appendStudioPossibilityEcology(
+    ensureStudioTimeline(scraped),
+    ecologyTwo,
+  ),
+  inheritAfterRender:
+    scraped.preferences.inheritAfterRender,
+  dirty: scraped.dirty,
+});
+
+const keptProposal = ecologyTwo.proposals[2];
+const kept = keepStudioPossibility(
+  ecologyTwoOpen,
+  ecologyTwo.id,
+  keptProposal.id,
+);
+const keptTimeline = ensureStudioTimeline(kept);
+const keptEcology = (keptTimeline.ecologies ?? []).find(
+  (ecology) => ecology.id === ecologyTwo.id,
+);
+
+if (
+  keptEcology?.disposition?.kind !== "KEEP" ||
+  keptEcology.disposition.proposalId !== keptProposal.id ||
+  kept.branch?.id !== keptEcology.disposition.resultBranchId
+) {
+  throw new Error(
+    "KEEP must promote exactly the selected proposal into one branch.",
+  );
+}
+
+if (
+  kept.receipts.some(
+    (receipt) =>
+      receipt.id === amberFuture.committed.receipt.id ||
+      receipt.id === blueFuture.committed.receipt.id ||
+      receipt.id === relationFuture.receipt.id,
+  )
+) {
+  throw new Error(
+    "Kept possibility must fork from shared history without inheriting alternate future receipts.",
+  );
+}
+
+const keptDeck = kept.checkpoint?.inheritedDeck;
+const keptQueued = kept.queue[0];
+if (!keptDeck || !keptQueued) {
+  throw new Error(
+    "Kept possibility branch is missing its inherited deck or next song.",
+  );
+}
+
+const keepMarker =
+  keptDeck.metadata?.studioPossibilityKeep as
+    | {
+        proposalId?: string;
+        authorityClass?: string;
+      }
+    | undefined;
+const hauntMarker =
+  keptDeck.metadata?.studioHauntCapsule as
+    | {
+        id?: string;
+        authorityClass?: string;
+      }
+    | undefined;
+
+if (
+  keepMarker?.proposalId !== keptProposal.id ||
+  keepMarker?.authorityClass !== "continuation-permission" ||
+  hauntMarker?.id !== ecologyTwo.capsule.id ||
+  hauntMarker?.authorityClass !== "influence-only"
+) {
+  throw new Error(
+    "KEEP branch did not preserve proposal permission and influence-only capsule provenance.",
+  );
+}
+
+const keptPrepared = await prepareNextSong(
+  {
+    deck: keptDeck,
+    worldRule: kept.session.worldRule,
+    priorPlan: kept.session.plan,
+    audio: keptQueued.audio,
+  },
+  {
+    scratchRoot: join(proofScratch, "kept-possibility"),
+  },
+);
+const keptArrive = keptPrepared.plan.events.find(
+  (event) => event.type === "arrive",
+);
+if (keptArrive?.params?.from !== "kept-possibility") {
+  throw new Error(
+    "KEEP-authorized future did not enter composition from kept-possibility.",
+  );
+}
+
+const keptFuture = await commitStudioPayload(
+  {
+    deck: keptDeck,
+    track: keptPrepared.track,
+    worldRule: kept.session.worldRule,
+    plan: keptPrepared.plan,
+    envelope: keptPrepared.envelope,
+    assets: {
+      ...kept.assets,
+      [keptPrepared.track.source]:
+        keptPrepared.audioAsset,
+    },
+    inherit: true,
+  },
+  {
+    outputRoot: proofOutput,
+    scratchRoot: proofScratch,
+  },
+);
+
+if (!keptFuture.inheritedDeck) {
+  throw new Error(
+    "KEEP-authorized proposal did not produce a witnessed inherited deck.",
+  );
+}
+
+const keptContinuity =
+  keptFuture.inheritedDeck.metadata?.continuity as
+    | {history?: unknown[]}
+    | undefined;
+if ((keptContinuity?.history?.length ?? 0) !== 3) {
+  throw new Error(
+    "Kept proposal future must extend the common two-crossing past by exactly one.",
+  );
+}
+
+const keptFutureSession = {
+  ...kept.session,
+  deck: keptDeck,
+  track: keptPrepared.track,
+  worldRule: kept.session.worldRule,
+  plan: keptPrepared.plan,
+  envelope: keptPrepared.envelope,
+  receipt: keptFuture.receipt,
+};
+const keptFutureReceipts = [
+  ...kept.receipts.filter(
+    (receipt) => receipt.id !== keptFuture.receipt.id,
+  ),
+  keptFuture.receipt,
+];
+const keptFutureAssets: Record<string, StudioAssetPayload> = {
+  ...kept.assets,
+  [keptPrepared.track.source]: keptPrepared.audioAsset,
+  ...keptFuture.newAssets,
+};
+const keptTimelineWithReceipt =
+  appendStudioTimelineCheckpoint(
+    ensureStudioTimeline(kept),
+    {
+      id: keptFuture.id,
+      receipt: keptFuture.receipt,
+      inheritedDeck: keptFuture.inheritedDeck,
+      parentReceiptId: kept.checkpoint?.receipt.id,
+      branchId: kept.branch?.id,
+      state: {
+        session: keptFutureSession,
+        assets: keptFutureAssets,
+        queue: kept.queue.slice(1),
+        receipts: keptFutureReceipts,
+        preferences: kept.preferences,
+        dirty: false,
+      },
+    },
+  );
+
+const keptArchive = createStudioSessionArchive({
+  session: keptFutureSession,
+  assets: keptFutureAssets,
+  queue: kept.queue.slice(1),
+  receipts: keptFutureReceipts,
+  checkpoint: {
+    id: keptFuture.id,
+    receipt: keptFuture.receipt,
+    inheritedDeck: keptFuture.inheritedDeck,
+  },
+  branch: kept.branch,
+  timeline: keptTimelineWithReceipt,
+  inheritAfterRender:
+    kept.preferences.inheritAfterRender,
+  dirty: false,
+});
+
+const ecologyGraph = buildStudioTimelineGraph(
+  ensureStudioTimeline(keptArchive),
+);
+const keptBranchNode =
+  `branch:${kept.branch?.id}`;
+const keptProposalNode =
+  `proposal:${keptProposal.id}`;
+const capsuleNode =
+  `capsule:${ecologyTwo.capsule.id}`;
+const keptReceiptNode =
+  `receipt:${keptFuture.receipt.id}`;
+
+const requiredEcologyEdges = [
+  {
+    kind: "haunts",
+    from: relationNodeId,
+    to: capsuleNode,
+  },
+  ...ecologyTwo.proposals.map((proposal) => ({
+    kind: "proposes" as const,
+    from: capsuleNode,
+    to: `proposal:${proposal.id}`,
+  })),
+  {
+    kind: "keeps",
+    from: keptProposalNode,
+    to: keptBranchNode,
+  },
+  {
+    kind: "fork",
+    from: commonReceiptNodeId,
+    to: keptBranchNode,
+  },
+  {
+    kind: "continuity",
+    from: keptBranchNode,
+    to: keptReceiptNode,
+  },
+] as const;
+
+for (const expected of requiredEcologyEdges) {
+  if (
+    !ecologyGraph.edges.some(
+      (edge) =>
+        edge.kind === expected.kind &&
+        edge.from === expected.from &&
+        edge.to === expected.to,
+    )
+  ) {
+    throw new Error(
+      `Possibility ecology graph is missing ${expected.kind} edge ${expected.from} -> ${expected.to}.`,
+    );
+  }
+}
+
+const unkeptProposalIds = ecologyTwo.proposals
+  .filter((proposal) => proposal.id !== keptProposal.id)
+  .map((proposal) => proposal.id);
+
+if (
+  ecologyGraph.edges.some(
+    (edge) =>
+      edge.kind === "keeps" &&
+      unkeptProposalIds.some(
+        (proposalId) =>
+          edge.from === `proposal:${proposalId}`,
+      ),
+  )
+) {
+  throw new Error(
+    "An unkept proposal acquired continuation permission.",
+  );
+}
+
+for (const proposal of ecologyTwo.proposals) {
+  const node = ecologyGraph.nodes.find(
+    (candidate) =>
+      candidate.id === `proposal:${proposal.id}`,
+  );
+  if (
+    !node ||
+    node.authorityClass !== "proposal" ||
+    node.receiptId ||
+    node.checkpointId
+  ) {
+    throw new Error(
+      "Proposal nodes must remain proposal-only and non-witnessed.",
+    );
+  }
+}
+
+const capsuleGraphNode = ecologyGraph.nodes.find(
+  (node) => node.id === capsuleNode,
+);
+const keptBranchGraphNode = ecologyGraph.nodes.find(
+  (node) => node.id === keptBranchNode,
+);
+const keptReceiptGraphNode = ecologyGraph.nodes.find(
+  (node) => node.id === keptReceiptNode,
+);
+if (
+  capsuleGraphNode?.authorityClass !== "influence-only" ||
+  keptBranchGraphNode?.authorityClass !==
+    "continuation-permission" ||
+  keptReceiptGraphNode?.authorityClass !==
+    "resolved-execution"
+) {
+  throw new Error(
+    "Authority classes collapsed across capsule, KEEP, and witnessed execution.",
+  );
+}
+
+const ecologyPath = join(
+  proofOutput,
+  "studio-010-haunted-possibility-ecology.json",
+);
+writeFileSync(
+  ecologyPath,
+  JSON.stringify(
+    {
+      scraped: ecologyOne,
+      kept: keptEcology,
+      graph: ecologyGraph,
+    },
+    null,
+    2,
+  ) + "\n",
+  "utf8",
+);
+
+const keptSessionPath = join(
+  proofOutput,
+  "studio-010-kept-possibility.playdeck-session.json",
+);
+writeFileSync(
+  keptSessionPath,
+  serializeStudioSessionArchive(keptArchive),
+  "utf8",
+);
+
 const causalGraphPath = join(
   proofOutput,
   "studio-009-creative-causal-graph.json",
@@ -1151,6 +1561,44 @@ console.log(
             edge.to === relationReceiptNodeId),
       ).length,
     causalGraphPath,
+    ecologyOneDisposition:
+      scrapedEcology?.disposition?.kind,
+    ecologyOneGeneration: ecologyOne.generation,
+    ecologyTwoGeneration: ecologyTwo.generation,
+    ecologyProposalCount: ecologyTwo.proposals.length,
+    ecologyCapsuleAuthority:
+      ecologyTwo.capsule.authorityClass,
+    keptProposal: keptProposal.id,
+    keptProposalAuthority:
+      keptProposal.authorityClass,
+    keptBranch: kept.branch?.id,
+    keptIntroFrom: keptArrive?.params?.from,
+    keptReceipt: keptFuture.receipt.id,
+    keptContinuityDepth:
+      keptContinuity?.history?.length ?? 0,
+    ecologyGraphNodes: ecologyGraph.nodes.length,
+    ecologyGraphEdges: ecologyGraph.edges.length,
+    ecologyKeepEdges:
+      ecologyGraph.edges.filter(
+        (edge) => edge.kind === "keeps",
+      ).length,
+    ecologyUnkeptKeepEdges:
+      ecologyGraph.edges.filter(
+        (edge) =>
+          edge.kind === "keeps" &&
+          unkeptProposalIds.some(
+            (proposalId) =>
+              edge.from === `proposal:${proposalId}`,
+          ),
+      ).length,
+    ecologyProposalReceipts:
+      ecologyGraph.nodes.filter(
+        (node) =>
+          node.kind === "proposal" &&
+          Boolean(node.receiptId),
+      ).length,
+    ecologyPath,
+    keptSessionPath,
     relationPath,
     relationSessionPath,
     firstNewAssets: Object.keys(first.newAssets).length,
