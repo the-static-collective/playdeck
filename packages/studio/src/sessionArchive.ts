@@ -215,12 +215,12 @@ export const ensureStudioTimeline = (
 ): StudioTimelineLedger => {
   const current = currentTimelineCheckpoint(archive);
   return mergeStudioTimelineLedgers(
-    archive.timeline,
     {
       schemaVersion: "0.1",
       checkpoints: current ? [current] : [],
       branches: archive.branch ? [archive.branch] : [],
     },
+    archive.timeline,
   );
 };
 
