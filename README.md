@@ -510,7 +510,7 @@ The plan survives the renderer.
 
 ## Studio
 
-Studio 006 is live in `packages/studio`.
+Studio 007 is live in `packages/studio`.
 
 ~~~bash
 npm run studio
@@ -551,6 +551,11 @@ A human can:
 - preserve shared receipt ancestry byte-for-byte across sibling futures
 - stamp branch identity only onto the future working deck
 - render sibling branches into distinct receipts without rewriting their common past
+- view witnessed receipts, restartable checkpoints, and branch forks as a timeline tree
+- merge sibling branch session files into one graph without changing the active working session
+- select a stored checkpoint and genuinely jump back into its portable restart state
+- fork directly from a selected graph checkpoint
+- preserve checkpoint identity so opening a branch cannot retroactively recolor the shared fork node
 
 The cockpit commit is local-only and bounded. The browser sends structured state plus selected bundle media to its own localhost Studio server; a dedicated worker performs the render. It does not expose arbitrary shell execution.
 
@@ -661,6 +666,26 @@ SHARED PAST ----<
 ~~~
 
 A branch begins only from a sealed checkpoint. The shared receipt ancestry remains unchanged. The branch marker is written onto the inherited working deck, not retroactively into the past. Sibling branches may then alter world rules, composition choices, and future media independently.
+
+Studio 007 makes that ancestry directly navigable:
+
+~~~text
+                         /-> [AMBER] -> receipt A
+receipt 2 [checkpoint] -<
+                         \-> [BLUE]  -> receipt B
+~~~
+
+The tree distinguishes plain receipts, restartable checkpoints, and branch nodes. A checkpoint carries the portable state required to resume from that exact point: working deck/plan, media, queue, receipt set, and world state.
+
+~~~text
+VISIBLE NODE != RESTARTABLE NODE
+BRANCH WORKING COPY != SHARED CHECKPOINT
+GRAPH SELECTION != HISTORY MUTATION
+JUMP = RESTORE STORED CHECKPOINT
+FORK = NEW FUTURE FROM STORED CHECKPOINT
+~~~
+
+Branch session files can be merged into the graph as additional evidence without switching the active cockpit.
 
 ---
 
@@ -790,6 +815,7 @@ That was enough reason to make a repository.
 [x] studio album-session future queue
 [x] studio portable session save / resume
 [x] studio branchable witnessed timelines
+[x] studio navigable timeline tree
 [x] folder -> deck ingestion
 [x] folder + song command
 [x] persistent album deck
@@ -798,4 +824,4 @@ That was enough reason to make a repository.
 
 Current phase:
 
-> **one witnessed past can now open into multiple lawful futures without either future rewriting where it came from.**
+> **the cockpit can now see, revisit, and fork its witnessed history as an explicit tree of recoverable moments.**
