@@ -510,7 +510,7 @@ The plan survives the renderer.
 
 ## Studio
 
-Studio 007 is live in `packages/studio`.
+Studio 008 is live in `packages/studio`.
 
 ~~~bash
 npm run studio
@@ -556,6 +556,12 @@ A human can:
 - select a stored checkpoint and genuinely jump back into its portable restart state
 - fork directly from a selected graph checkpoint
 - preserve checkpoint identity so opening a branch cannot retroactively recolor the shared fork node
+- select two restartable branch futures and compare their inherited decks, world rules, carry state, and receipt ancestry
+- resolve their latest common witnessed checkpoint before any new composition is allowed
+- export a portable branch-relation artifact describing shared identities, divergent specs, branch-only discoveries, and world differences
+- compose a third future from the relation while inheriting only the common checkpoint
+- keep both source-branch future receipts out of the new branch ancestry
+- expose relation-aware composition through explicit `relation-shared` / `relation-diverged` signals and a `cross-branch-relation` entrance
 
 The cockpit commit is local-only and bounded. The browser sends structured state plus selected bundle media to its own localhost Studio server; a dedicated worker performs the render. It does not expose arbitrary shell execution.
 
@@ -687,6 +693,37 @@ FORK = NEW FUTURE FROM STORED CHECKPOINT
 
 Branch session files can be merged into the graph as additional evidence without switching the active cockpit.
 
+Studio 008 lets two alternate futures become compositional context without collapsing them:
+
+~~~text
+               /-> AMBER -> receipt A
+COMMON PAST --<
+               \-> BLUE  -> receipt B
+                    |
+                    | compare, do not merge
+                    v
+              BRANCH RELATION
+                    |
+                    | fork from COMMON PAST
+                    v
+               RELATION WORLD
+                    |
+                    v
+                 receipt C
+~~~
+
+The relation records what stayed identical, what changed under the same card identity, what exists only in either branch, how world rules diverged, and what each receipt carried.
+
+~~~text
+COMPARE != MERGE
+OBSERVATION != ANCESTRY
+RELATION != SHARED HISTORY
+ALTERNATE RECEIPT != INHERITED RECEIPT
+THIRD FUTURE = COMMON PAST + DECLARED RELATION
+~~~
+
+The source futures remain untouched. Their receipts remain visible evidence in the timeline, but the relation-born branch does not claim that either alternate future happened in its own ancestry.
+
 ---
 
 ## CLI
@@ -816,6 +853,7 @@ That was enough reason to make a repository.
 [x] studio portable session save / resume
 [x] studio branchable witnessed timelines
 [x] studio navigable timeline tree
+[x] studio cross-branch relation composition
 [x] folder -> deck ingestion
 [x] folder + song command
 [x] persistent album deck
@@ -824,4 +862,4 @@ That was enough reason to make a repository.
 
 Current phase:
 
-> **the cockpit can now see, revisit, and fork its witnessed history as an explicit tree of recoverable moments.**
+> **alternate witnessed futures can now inform a new composition without being merged, erased, or falsely inherited.**
