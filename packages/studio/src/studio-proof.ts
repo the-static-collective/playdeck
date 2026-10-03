@@ -16,6 +16,10 @@ import {commitStudioPayload} from "./commitServer";
 import {prepareNextSong} from "./nextSongServer";
 import {recomposeStudioPlan} from "./recompose";
 import {
+  compareStudioBranchCheckpoints,
+  composeStudioRelationBranch,
+} from "./branchRelation";
+import {
   appendStudioTimelineCheckpoint,
   buildStudioTimelineGraph,
   createStudioSessionArchive,
@@ -733,6 +737,186 @@ if (
   );
 }
 
+const comparisonSource = {
+  ...amberArchive,
+  timeline: mergedTimeline,
+};
+
+const branchRelation = compareStudioBranchCheckpoints(
+  mergedTimeline,
+  amberFuture.committed.id,
+  blueFuture.committed.id,
+);
+
+if (
+  branchRelation.common.receiptId !== second.receipt.id ||
+  branchRelation.common.checkpointId !== second.id
+) {
+  throw new Error(
+    "Cross-branch comparison did not resolve the latest shared witnessed checkpoint.",
+  );
+}
+
+if (
+  !branchRelation.world.diverged.some(
+    (difference) => difference.field === "surface",
+  )
+) {
+  throw new Error(
+    "Cross-branch relation did not preserve the divergent world surfaces.",
+  );
+}
+
+const relationPath = join(
+  proofOutput,
+  "studio-008-branch-relation.json",
+);
+writeFileSync(
+  relationPath,
+  JSON.stringify(branchRelation, null, 2) + "\n",
+  "utf8",
+);
+
+const relationBranch = composeStudioRelationBranch(
+  comparisonSource,
+  branchRelation,
+  "relation-world",
+);
+
+if (
+  relationBranch.branch?.forkedFromReceipt !== second.receipt.id ||
+  relationBranch.branch?.parentId
+) {
+  throw new Error(
+    "Relation future must fork as a sibling from the shared checkpoint.",
+  );
+}
+
+if (
+  relationBranch.receipts.some(
+    (receipt) =>
+      receipt.id === amberFuture.committed.receipt.id ||
+      receipt.id === blueFuture.committed.receipt.id,
+  )
+) {
+  throw new Error(
+    "Relation future must observe sibling receipts without inheriting them as ancestry.",
+  );
+}
+
+const relationDeck = relationBranch.checkpoint?.inheritedDeck;
+const relationQueued = relationBranch.queue[0];
+if (!relationDeck || !relationQueued) {
+  throw new Error(
+    "Relation future is missing its common deck or unborn queued song.",
+  );
+}
+
+const relationMetadata =
+  relationDeck.metadata?.studioBranchRelation as
+    | {id?: string}
+    | undefined;
+if (relationMetadata?.id !== branchRelation.id) {
+  throw new Error(
+    "Relation artifact was not carried onto the composed future deck.",
+  );
+}
+
+const relationPrepared = await prepareNextSong(
+  {
+    deck: relationDeck,
+    worldRule: relationBranch.session.worldRule,
+    priorPlan: relationBranch.session.plan,
+    audio: relationQueued.audio,
+  },
+  {
+    scratchRoot: join(proofScratch, "branch-relation"),
+  },
+);
+
+const relationArrive = relationPrepared.plan.events.find(
+  (event) => event.type === "arrive",
+);
+if (
+  relationArrive?.params?.from !== "cross-branch-relation"
+) {
+  throw new Error(
+    "Relation-born composition did not enter from cross-branch-relation.",
+  );
+}
+
+const relationFuture = await commitStudioPayload(
+  {
+    deck: relationDeck,
+    track: relationPrepared.track,
+    worldRule: relationBranch.session.worldRule,
+    plan: relationPrepared.plan,
+    envelope: relationPrepared.envelope,
+    assets: {
+      ...relationBranch.assets,
+      [relationPrepared.track.source]:
+        relationPrepared.audioAsset,
+    },
+    inherit: true,
+  },
+  {
+    outputRoot: proofOutput,
+    scratchRoot: proofScratch,
+  },
+);
+
+if (!relationFuture.inheritedDeck) {
+  throw new Error(
+    "Relation-born future did not produce an inherited deck.",
+  );
+}
+
+if (
+  relationFuture.receipt.id === amberFuture.committed.receipt.id ||
+  relationFuture.receipt.id === blueFuture.committed.receipt.id
+) {
+  throw new Error(
+    "Relation-born future must seal as a distinct witnessed performance.",
+  );
+}
+
+const relationBranchMarker =
+  relationFuture.inheritedDeck.metadata?.studioBranch as
+    | {id?: string}
+    | undefined;
+const relationCarry =
+  relationFuture.inheritedDeck.metadata?.studioBranchRelation as
+    | {id?: string}
+    | undefined;
+if (
+  relationBranchMarker?.id !== relationBranch.branch?.id ||
+  relationCarry?.id !== branchRelation.id
+) {
+  throw new Error(
+    "Relation and branch provenance must survive the witnessed relation crossing.",
+  );
+}
+
+const relationContinuity =
+  relationFuture.inheritedDeck.metadata?.continuity as
+    | {history?: unknown[]}
+    | undefined;
+if ((relationContinuity?.history?.length ?? 0) !== 3) {
+  throw new Error(
+    "Relation future must extend the common two-crossing past by exactly one.",
+  );
+}
+
+const relationSessionPath = join(
+  proofOutput,
+  "studio-008-relation-world.playdeck-session.json",
+);
+writeFileSync(
+  relationSessionPath,
+  serializeStudioSessionArchive(relationBranch),
+  "utf8",
+);
+
 
 console.log(
   JSON.stringify({
@@ -768,6 +952,31 @@ console.log(
       jumpedAmber.checkpoint?.receipt.id,
     violetSibling:
       violetSibling.branch?.id,
+    relationId: branchRelation.id,
+    relationCommonReceipt:
+      branchRelation.common.receiptId,
+    relationWorldDifferences:
+      branchRelation.world.diverged.length,
+    relationSharedCards:
+      branchRelation.cards.sharedUnchanged.length,
+    relationDivergedCards:
+      branchRelation.cards.sharedDiverged.length,
+    relationBranch:
+      relationBranch.branch?.id,
+    relationIntroFrom:
+      relationArrive?.params?.from,
+    relationReceipt:
+      relationFuture.receipt.id,
+    relationContinuityDepth:
+      relationContinuity?.history?.length ?? 0,
+    relationInheritedSiblingReceipts:
+      relationBranch.receipts.filter(
+        (receipt) =>
+          receipt.id === amberFuture.committed.receipt.id ||
+          receipt.id === blueFuture.committed.receipt.id,
+      ).length,
+    relationPath,
+    relationSessionPath,
     firstNewAssets: Object.keys(first.newAssets).length,
     secondNewAssets: Object.keys(second.newAssets).length,
     thirdNewAssets: Object.keys(third.newAssets).length,
