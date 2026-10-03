@@ -347,12 +347,9 @@ export const assertPortableStudioSession = (
       );
     }
 
-    if (
-      archive.branch.forkedFromReceipt !==
-      archive.checkpoint.receipt.id
-    ) {
+    if (!receiptIds.has(archive.branch.forkedFromReceipt)) {
       throw new Error(
-        "Branch origin must match the checkpoint receipt.",
+        "Branch origin receipt is missing from session ancestry.",
       );
     }
 
