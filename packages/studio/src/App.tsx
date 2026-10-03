@@ -169,6 +169,16 @@ export const App: React.FC = () => {
       ),
     [timelineGraph, selectedTimelineNodeId],
   );
+  const selectedTimelineRelation = useMemo(
+    () =>
+      selectedTimelineNode?.relationId
+        ? (timeline.relations ?? []).find(
+            (relation) =>
+              relation.id === selectedTimelineNode.relationId,
+          )
+        : undefined,
+    [timeline.relations, selectedTimelineNode],
+  );
 
   const branchComparison = useMemo<{
     relation: StudioBranchRelation | null;
@@ -738,7 +748,7 @@ export const App: React.FC = () => {
     return (
       <main className="landing">
         <section className="landing-card">
-          <div className="eyebrow">PLAYDECK / STUDIO 008</div>
+          <div className="eyebrow">PLAYDECK / STUDIO 009</div>
           <h1>Open the room.</h1>
           <p>
             Load any PlayDeck output bundle. Studio reconstructs its
@@ -785,7 +795,7 @@ export const App: React.FC = () => {
     <main className="studio-shell">
       <header className="topbar">
         <div>
-          <div className="eyebrow">PLAYDECK / STUDIO 008</div>
+          <div className="eyebrow">PLAYDECK / STUDIO 009</div>
           <h1>{session.deck.title ?? session.deck.id}</h1>
         </div>
         <div className="top-actions">
@@ -1007,9 +1017,9 @@ export const App: React.FC = () => {
           <div className="timeline-tree-panel panel">
             <div className="panel-heading">
               <div>
-                <span className="panel-kicker">TIMELINE TREE</span>
+                <span className="panel-kicker">CREATIVE CAUSAL GRAPH</span>
                 <strong>
-                  {timelineGraph.nodes.length} nodes · {timelineGraph.edges.length} crossings
+                  {timelineGraph.nodes.length} nodes · {timelineGraph.edges.length} edges · {(timeline.relations ?? []).length} relations
                 </strong>
               </div>
               <label className="timeline-import-button">
@@ -1047,7 +1057,45 @@ export const App: React.FC = () => {
                         {selectedTimelineNode.label}
                       </strong>
                     </div>
-                    {selectedTimelineNode.checkpointId ? (
+                    {selectedTimelineRelation ? (
+                      <div className="relation-node-inspector">
+                        <div>
+                          <span>OBSERVES A</span>
+                          <strong>
+                            {selectedTimelineRelation.left.branchLabel}
+                          </strong>
+                          <small>
+                            {selectedTimelineRelation.left.receiptId}
+                          </small>
+                        </div>
+                        <div>
+                          <span>OBSERVES B</span>
+                          <strong>
+                            {selectedTimelineRelation.right.branchLabel}
+                          </strong>
+                          <small>
+                            {selectedTimelineRelation.right.receiptId}
+                          </small>
+                        </div>
+                        <div>
+                          <span>HISTORY ROOT</span>
+                          <strong>
+                            {selectedTimelineRelation.common.receiptId}
+                          </strong>
+                          <small>ancestry, not observation</small>
+                        </div>
+                        <div>
+                          <span>COMPOSES</span>
+                          <strong>
+                            {selectedTimelineRelation.resultBranchId}
+                          </strong>
+                          <small>
+                            {selectedTimelineRelation.summary.sharedDiverged} diverged ·{" "}
+                            {selectedTimelineRelation.summary.worldDiverged} world diffs
+                          </small>
+                        </div>
+                      </div>
+                    ) : selectedTimelineNode.checkpointId ? (
                       <div className="timeline-node-actions">
                         <button
                           onClick={() =>
@@ -1119,7 +1167,7 @@ export const App: React.FC = () => {
             ) : (
               <div className="timeline-tree-empty">
                 Render + seal with “prepare next deck” to create the
-                first restartable timeline checkpoint.
+                first restartable causal checkpoint.
               </div>
             )}
           </div>
