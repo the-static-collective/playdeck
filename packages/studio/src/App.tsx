@@ -35,6 +35,11 @@ import type {
 import {recomposeStudioPlan} from "./recompose";
 import {TimelineTree} from "./TimelineTree";
 import {
+  compareStudioBranchCheckpoints,
+  composeStudioRelationBranch,
+  type StudioBranchRelation,
+} from "./branchRelation";
+import {
   appendStudioTimelineCheckpoint,
   buildStudioTimelineGraph,
   createStudioSessionArchive,
@@ -122,6 +127,10 @@ export const App: React.FC = () => {
     useState(emptyStudioTimeline);
   const [selectedTimelineNodeId, setSelectedTimelineNodeId] =
     useState<string | null>(null);
+  const [compareLeftCheckpointId, setCompareLeftCheckpointId] =
+    useState<string | null>(null);
+  const [compareRightCheckpointId, setCompareRightCheckpointId] =
+    useState<string | null>(null);
   const dynamicUrls = useRef<string[]>([]);
 
   useEffect(
@@ -160,6 +169,35 @@ export const App: React.FC = () => {
       ),
     [timelineGraph, selectedTimelineNodeId],
   );
+
+  const branchComparison = useMemo<{
+    relation: StudioBranchRelation | null;
+    error: string | null;
+  }>(() => {
+    if (!compareLeftCheckpointId || !compareRightCheckpointId) {
+      return {relation: null, error: null};
+    }
+    try {
+      return {
+        relation: compareStudioBranchCheckpoints(
+          timeline,
+          compareLeftCheckpointId,
+          compareRightCheckpointId,
+        ),
+        error: null,
+      };
+    } catch (reason) {
+      return {
+        relation: null,
+        error:
+          reason instanceof Error ? reason.message : String(reason),
+      };
+    }
+  }, [
+    timeline,
+    compareLeftCheckpointId,
+    compareRightCheckpointId,
+  ]);
 
   const setRecomposed = (
     next: {
@@ -212,6 +250,8 @@ export const App: React.FC = () => {
       setReceiptHistory(next.receipt ? [next.receipt] : []);
       setTimeline(emptyStudioTimeline());
       setSelectedTimelineNodeId(null);
+      setCompareLeftCheckpointId(null);
+      setCompareRightCheckpointId(null);
       setLastCommit(null);
       setDirty(false);
     } catch (reason) {
@@ -296,6 +336,8 @@ export const App: React.FC = () => {
         ? `receipt:${archive.checkpoint.receipt.id}`
         : null,
     );
+    setCompareLeftCheckpointId(null);
+    setCompareRightCheckpointId(null);
     setInheritAfterRender(
       archive.preferences.inheritAfterRender,
     );
@@ -412,6 +454,41 @@ export const App: React.FC = () => {
         forked,
       );
       restoreSessionArchive(forked);
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : String(reason),
+      );
+    }
+  };
+
+  const composeRelationTimeline = async () => {
+    const relation = branchComparison.relation;
+    if (!session || !relation) return;
+
+    const label = window.prompt(
+      "Name the future composed from this branch relation:",
+      "relation-world",
+    );
+    if (!label?.trim()) return;
+
+    try {
+      setError(null);
+      const source = await captureCurrentArchive();
+      const composed = composeStudioRelationBranch(
+        source,
+        relation,
+        label,
+      );
+
+      downloadJson(
+        `${relation.id}.branch-relation.json`,
+        relation,
+      );
+      downloadJson(
+        `${session.deck.id}--${composed.branch?.id ?? "relation"}.playdeck-session.json`,
+        composed,
+      );
+      restoreSessionArchive(composed);
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : String(reason),
@@ -661,7 +738,7 @@ export const App: React.FC = () => {
     return (
       <main className="landing">
         <section className="landing-card">
-          <div className="eyebrow">PLAYDECK / STUDIO 007</div>
+          <div className="eyebrow">PLAYDECK / STUDIO 008</div>
           <h1>Open the room.</h1>
           <p>
             Load any PlayDeck output bundle. Studio reconstructs its
@@ -708,7 +785,7 @@ export const App: React.FC = () => {
     <main className="studio-shell">
       <header className="topbar">
         <div>
-          <div className="eyebrow">PLAYDECK / STUDIO 007</div>
+          <div className="eyebrow">PLAYDECK / STUDIO 008</div>
           <h1>{session.deck.title ?? session.deck.id}</h1>
         </div>
         <div className="top-actions">
@@ -990,6 +1067,45 @@ export const App: React.FC = () => {
                         >
                           Fork here
                         </button>
+                        {timeline.checkpoints.find(
+                          (checkpoint) =>
+                            checkpoint.id ===
+                              selectedTimelineNode.checkpointId &&
+                            checkpoint.branchId,
+                        ) ? (
+                          <>
+                            <button
+                              className={
+                                compareLeftCheckpointId ===
+                                selectedTimelineNode.checkpointId
+                                  ? "compare-slot active"
+                                  : "compare-slot"
+                              }
+                              onClick={() =>
+                                setCompareLeftCheckpointId(
+                                  selectedTimelineNode.checkpointId!,
+                                )
+                              }
+                            >
+                              Compare A
+                            </button>
+                            <button
+                              className={
+                                compareRightCheckpointId ===
+                                selectedTimelineNode.checkpointId
+                                  ? "compare-slot active"
+                                  : "compare-slot"
+                              }
+                              onClick={() =>
+                                setCompareRightCheckpointId(
+                                  selectedTimelineNode.checkpointId!,
+                                )
+                              }
+                            >
+                              Compare B
+                            </button>
+                          </>
+                        ) : null}
                       </div>
                     ) : (
                       <small>
@@ -1004,6 +1120,123 @@ export const App: React.FC = () => {
               <div className="timeline-tree-empty">
                 Render + seal with “prepare next deck” to create the
                 first restartable timeline checkpoint.
+              </div>
+            )}
+          </div>
+
+          <div className="branch-comparison panel">
+            <div className="panel-heading">
+              <div>
+                <span className="panel-kicker">CROSS-BRANCH RELATION</span>
+                <strong>
+                  {branchComparison.relation
+                    ? branchComparison.relation.id
+                    : "choose two branch checkpoints"}
+                </strong>
+              </div>
+              {(compareLeftCheckpointId || compareRightCheckpointId) ? (
+                <button
+                  className="comparison-clear"
+                  onClick={() => {
+                    setCompareLeftCheckpointId(null);
+                    setCompareRightCheckpointId(null);
+                  }}
+                >
+                  Clear
+                </button>
+              ) : null}
+            </div>
+
+            <div className="comparison-slots">
+              <div>
+                <span>A</span>
+                <strong>
+                  {compareLeftCheckpointId ?? "not selected"}
+                </strong>
+              </div>
+              <div>
+                <span>B</span>
+                <strong>
+                  {compareRightCheckpointId ?? "not selected"}
+                </strong>
+              </div>
+            </div>
+
+            {branchComparison.error ? (
+              <div className="comparison-error">
+                {branchComparison.error}
+              </div>
+            ) : null}
+
+            {branchComparison.relation ? (
+              <>
+                <div className="comparison-grid">
+                  <div>
+                    <span>same cards</span>
+                    <strong>
+                      {branchComparison.relation.cards.sharedUnchanged.length}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>diverged cards</span>
+                    <strong>
+                      {branchComparison.relation.cards.sharedDiverged.length}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>A only</span>
+                    <strong>
+                      {branchComparison.relation.cards.leftOnly.length}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>B only</span>
+                    <strong>
+                      {branchComparison.relation.cards.rightOnly.length}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>world differences</span>
+                    <strong>
+                      {branchComparison.relation.world.diverged.length}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>shared checkpoint</span>
+                    <strong>
+                      {branchComparison.relation.common.receiptId}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="comparison-actions">
+                  <button
+                    onClick={() =>
+                      downloadJson(
+                        `${branchComparison.relation!.id}.branch-relation.json`,
+                        branchComparison.relation!,
+                      )
+                    }
+                  >
+                    Export relation
+                  </button>
+                  <button
+                    className="compose-relation-button"
+                    onClick={composeRelationTimeline}
+                  >
+                    Compose third future
+                  </button>
+                </div>
+
+                <div className="comparison-law">
+                  Comparison observes both branches. The composed future
+                  inherits only their latest shared witnessed checkpoint.
+                </div>
+              </>
+            ) : (
+              <div className="comparison-empty">
+                Select a restartable node from one branch as Compare A,
+                then a restartable node from another branch as Compare B.
               </div>
             )}
           </div>
