@@ -881,3 +881,102 @@ button {
   line-height: 1.55;
   text-align: center;
 }
+
+
+.branch-comparison {
+  padding: 12px;
+}
+
+.comparison-slots {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.comparison-slots > div,
+.comparison-grid > div {
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(12, 14, 22, 0.86);
+  padding: 8px 9px;
+}
+
+.comparison-slots span,
+.comparison-grid span {
+  display: block;
+  color: #7f7a89;
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.comparison-slots strong,
+.comparison-grid strong {
+  display: block;
+  margin-top: 3px;
+  color: #d9d2df;
+  font-size: 9px;
+  overflow-wrap: anywhere;
+}
+
+.comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 8px;
+}
+
+.comparison-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.comparison-actions button,
+.comparison-clear {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #171a26;
+  color: #cec8d1;
+  padding: 7px 9px;
+  cursor: pointer;
+  font-size: 9px;
+}
+
+.compose-relation-button {
+  border-color: rgba(201, 131, 220, 0.42) !important;
+  background: rgba(131, 73, 151, 0.18) !important;
+  color: #e3bee9 !important;
+}
+
+.compare-slot.active {
+  border-color: rgba(232, 194, 121, 0.62) !important;
+  color: #efd399 !important;
+}
+
+.comparison-law,
+.comparison-empty,
+.comparison-error {
+  margin-top: 8px;
+  padding: 8px 9px;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.comparison-law {
+  border-left: 2px solid rgba(116, 164, 198, 0.48);
+  color: #8d93a0;
+  background: rgba(80, 112, 145, 0.07);
+}
+
+.comparison-empty {
+  color: #777481;
+  text-align: center;
+}
+
+.comparison-error {
+  border-left: 2px solid rgba(193, 105, 105, 0.52);
+  color: #c79797;
+  background: rgba(128, 58, 58, 0.08);
+}
