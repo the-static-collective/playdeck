@@ -1042,3 +1042,130 @@ button {
   font-size: 8px;
   overflow-wrap: anywhere;
 }
+
+
+.timeline-edge.haunts {
+  stroke: rgba(134, 174, 149, 0.68);
+  stroke-dasharray: 1 5;
+}
+
+.timeline-edge.proposes {
+  stroke: rgba(153, 139, 195, 0.48);
+  stroke-dasharray: 4 4;
+}
+
+.timeline-edge.keeps {
+  stroke: rgba(230, 183, 91, 0.82);
+  stroke-width: 2.4;
+}
+
+.timeline-tree-node.capsule {
+  border-color: rgba(118, 171, 143, 0.48);
+  background:
+    linear-gradient(135deg, rgba(50, 101, 72, 0.2), rgba(30, 54, 46, 0.14)),
+    #10151a;
+}
+
+.timeline-tree-node.capsule span {
+  color: #89b89b;
+}
+
+.timeline-tree-node.proposal {
+  border-color: rgba(150, 133, 194, 0.32);
+  background: rgba(91, 74, 128, 0.14);
+}
+
+.timeline-tree-node.proposal span {
+  color: #aa9ac9;
+}
+
+.possibility-node-inspector {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.7fr) minmax(220px, 1.4fr) auto;
+  gap: 7px;
+  align-items: stretch;
+  flex: 1 1 620px;
+}
+
+.possibility-node-inspector > div {
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(9, 13, 18, 0.72);
+}
+
+.possibility-node-inspector span,
+.possibility-node-inspector strong,
+.possibility-node-inspector small,
+.possibility-node-inspector code {
+  display: block;
+}
+
+.possibility-node-inspector span {
+  color: #81948a;
+  font-size: 7px;
+  letter-spacing: 0.12em;
+}
+
+.possibility-node-inspector strong {
+  margin-top: 3px;
+  color: #d6ddd8;
+  font-size: 9px;
+  overflow-wrap: anywhere;
+}
+
+.possibility-node-inspector small {
+  margin-top: 3px;
+  color: #747d77;
+  font-size: 8px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.possibility-node-inspector code {
+  margin-top: 5px;
+  color: #9f93b5;
+  font-size: 8px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.possibility-node-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.possibility-node-actions button,
+.grow-possibilities {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #171a22;
+  color: #cfc9d5;
+  padding: 7px 9px;
+  cursor: pointer;
+  font-size: 9px;
+}
+
+.keep-possibility {
+  border-color: rgba(226, 180, 91, 0.46) !important;
+  color: #efd49b !important;
+  background: rgba(139, 96, 40, 0.16) !important;
+}
+
+.scrape-possibility {
+  color: #9c99a3 !important;
+}
+
+.grow-possibilities {
+  grid-column: 1 / -1;
+  justify-self: end;
+  border-color: rgba(118, 171, 143, 0.4);
+  color: #b8ddc5;
+}
+
+.possibility-disposition {
+  display: flex;
+  align-items: center;
+  color: #b8ab91;
+  font-size: 9px;
+}
