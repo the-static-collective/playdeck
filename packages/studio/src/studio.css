@@ -706,3 +706,178 @@ button {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+
+.timeline-tree-panel {
+  padding: 12px;
+  overflow: hidden;
+}
+
+.timeline-import-button {
+  border: 1px solid rgba(154, 120, 191, 0.28);
+  background: rgba(121, 86, 159, 0.08);
+  color: #c8add7;
+  padding: 7px 9px;
+  cursor: pointer;
+  font-size: 9px;
+}
+
+.timeline-import-button input {
+  display: none;
+}
+
+.timeline-tree-scroll {
+  margin-top: 8px;
+  overflow: auto;
+  max-width: 100%;
+  min-height: 130px;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  background:
+    radial-gradient(circle at 20% 10%, rgba(136, 98, 174, 0.08), transparent 18rem),
+    #090b13;
+}
+
+.timeline-tree-canvas {
+  position: relative;
+  min-width: 100%;
+}
+
+.timeline-tree-edges {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.timeline-edge {
+  fill: none;
+  stroke: rgba(113, 151, 195, 0.42);
+  stroke-width: 1.5;
+}
+
+.timeline-edge.fork {
+  stroke: rgba(183, 121, 211, 0.62);
+  stroke-dasharray: 5 4;
+}
+
+.timeline-tree-node {
+  position: absolute;
+  width: 144px;
+  min-height: 48px;
+  padding: 7px 8px;
+  text-align: left;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: #121521;
+  color: #d7d1c9;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.timeline-tree-node.branch {
+  border-color: rgba(183, 121, 211, 0.36);
+  background: rgba(103, 62, 125, 0.19);
+}
+
+.timeline-tree-node.checkpoint {
+  border-left: 3px solid rgba(105, 177, 145, 0.68);
+}
+
+.timeline-tree-node.active {
+  box-shadow:
+    0 0 0 1px rgba(225, 180, 100, 0.34),
+    0 0 24px rgba(225, 180, 100, 0.08);
+}
+
+.timeline-tree-node.selected {
+  border-color: rgba(235, 194, 122, 0.72);
+}
+
+.timeline-tree-node span,
+.timeline-tree-node strong,
+.timeline-tree-node small {
+  display: block;
+}
+
+.timeline-tree-node span {
+  color: #7f7b88;
+  font-size: 7px;
+  letter-spacing: 0.14em;
+  font-weight: 850;
+}
+
+.timeline-tree-node strong {
+  margin-top: 3px;
+  font-size: 9px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.timeline-tree-node small {
+  margin-top: 2px;
+  color: #797684;
+  font-size: 8px;
+}
+
+.timeline-node-inspector {
+  margin-top: 8px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(15, 17, 27, 0.9);
+}
+
+.timeline-node-inspector span,
+.timeline-node-inspector strong,
+.timeline-node-inspector small {
+  display: block;
+}
+
+.timeline-node-inspector span {
+  color: #8e8998;
+  font-size: 8px;
+  letter-spacing: 0.12em;
+}
+
+.timeline-node-inspector strong {
+  margin-top: 3px;
+  font-size: 10px;
+  color: #dcd6cd;
+  overflow-wrap: anywhere;
+}
+
+.timeline-node-inspector small {
+  color: #777481;
+  font-size: 9px;
+}
+
+.timeline-node-actions {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.timeline-node-actions button {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #171a26;
+  color: #cec8d1;
+  padding: 7px 9px;
+  cursor: pointer;
+  font-size: 9px;
+}
+
+.timeline-node-actions button:last-child {
+  border-color: rgba(183, 121, 211, 0.35);
+  color: #d8b5e8;
+}
+
+.timeline-tree-empty {
+  padding: 22px 10px;
+  color: #777481;
+  font-size: 10px;
+  line-height: 1.55;
+  text-align: center;
+}
