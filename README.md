@@ -510,7 +510,7 @@ The plan survives the renderer.
 
 ## Studio
 
-Studio 005 is live in `packages/studio`.
+Studio 006 is live in `packages/studio`.
 
 ~~~bash
 npm run studio
@@ -547,6 +547,10 @@ A human can:
 - preserve full receipt history accumulated in Studio
 - preserve generated descendant media and the current continuity checkpoint
 - preserve still-unborn queued songs as audio-only future possibilities
+- fork a new timeline from any sealed continuity checkpoint
+- preserve shared receipt ancestry byte-for-byte across sibling futures
+- stamp branch identity only onto the future working deck
+- render sibling branches into distinct receipts without rewriting their common past
 
 The cockpit commit is local-only and bounded. The browser sends structured state plus selected bundle media to its own localhost Studio server; a dedicated worker performs the render. It does not expose arbitrary shell execution.
 
@@ -647,6 +651,16 @@ SAME CURRENT STATE
 ~~~
 
 Resume is not a crossing. It does not render, mutate the deck, or mint a receipt. A saved dirty proposal resumes dirty; a saved sealed checkpoint resumes with exactly the authority it already had.
+
+Studio 006 adds lawful alternate futures:
+
+~~~text
+                 /-> AMBER FUTURE -> receipt A
+SHARED PAST ----<
+                 \-> BLUE FUTURE  -> receipt B
+~~~
+
+A branch begins only from a sealed checkpoint. The shared receipt ancestry remains unchanged. The branch marker is written onto the inherited working deck, not retroactively into the past. Sibling branches may then alter world rules, composition choices, and future media independently.
 
 ---
 
@@ -775,6 +789,7 @@ That was enough reason to make a repository.
 [x] studio next-song inherited album loop
 [x] studio album-session future queue
 [x] studio portable session save / resume
+[x] studio branchable witnessed timelines
 [x] folder -> deck ingestion
 [x] folder + song command
 [x] persistent album deck
@@ -783,4 +798,4 @@ That was enough reason to make a repository.
 
 Current phase:
 
-> **the living album can now leave the machine and return without losing its place in time.**
+> **one witnessed past can now open into multiple lawful futures without either future rewriting where it came from.**
