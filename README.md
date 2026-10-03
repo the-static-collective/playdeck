@@ -510,7 +510,7 @@ The plan survives the renderer.
 
 ## Studio
 
-Studio 008 is live in `packages/studio`.
+Studio 009 is live in `packages/studio`.
 
 ~~~bash
 npm run studio
@@ -562,6 +562,11 @@ A human can:
 - compose a third future from the relation while inheriting only the common checkpoint
 - keep both source-branch future receipts out of the new branch ancestry
 - expose relation-aware composition through explicit `relation-shared` / `relation-diverged` signals and a `cross-branch-relation` entrance
+- promote branch relations into first-class nodes in the Studio graph
+- distinguish historical ancestry from creative influence with separate `fork`, `continuity`, `observes`, and `composes` edges
+- show which witnessed futures a relation observed without claiming those futures as ancestors
+- connect a relation node to the branch it helped compose while retaining that branch's independent fork from shared history
+- inspect relation provenance and divergence summaries directly from the graph
 
 The cockpit commit is local-only and bounded. The browser sends structured state plus selected bundle media to its own localhost Studio server; a dedicated worker performs the render. It does not expose arbitrary shell execution.
 
@@ -724,6 +729,43 @@ THIRD FUTURE = COMMON PAST + DECLARED RELATION
 
 The source futures remain untouched. Their receipts remain visible evidence in the timeline, but the relation-born branch does not claim that either alternate future happened in its own ancestry.
 
+Studio 009 promotes those relations into an explicit creative causal graph:
+
+~~~text
+                 historical ancestry
+COMMON RECEIPT ---------------------> [RELATION WORLD]
+      |                                  |
+      | fork                             | continuity
+      v                                  v
+ [AMBER] -> receipt A                receipt C
+      \                                ^
+       \ observes                      /
+        \                             / composes
+         > [AMBER ↔ BLUE RELATION] ---<
+        /
+       / observes
+      /
+ [BLUE] -> receipt B
+~~~
+
+The graph uses four distinct edge meanings:
+
+~~~text
+fork       = historical branch origin
+continuity = witnessed history inside a branch
+observes   = evidence consulted by a relation
+composes   = creative influence on a new branch
+~~~
+
+This distinction is structural. An observed alternate receipt may influence composition without becoming an ancestor.
+
+~~~text
+CAUSAL INFLUENCE != HISTORICAL ANCESTRY
+OBSERVED RECEIPT != INHERITED RECEIPT
+RELATION NODE != MERGE COMMIT
+MULTIPLE CAUSES != ONE COLLAPSED HISTORY
+~~~
+
 ---
 
 ## CLI
@@ -854,6 +896,7 @@ That was enough reason to make a repository.
 [x] studio branchable witnessed timelines
 [x] studio navigable timeline tree
 [x] studio cross-branch relation composition
+[x] studio creative causal graph
 [x] folder -> deck ingestion
 [x] folder + song command
 [x] persistent album deck
@@ -862,4 +905,4 @@ That was enough reason to make a repository.
 
 Current phase:
 
-> **alternate witnessed futures can now inform a new composition without being merged, erased, or falsely inherited.**
+> **PlayDeck can now represent history and creative influence in the same graph without confusing one for the other.**
