@@ -42,18 +42,49 @@ export type StudioTimelineCheckpoint = {
   state: StudioTimelineCheckpointState;
 };
 
+export type StudioTimelineRelation = {
+  id: string;
+  kind: "branch-relation";
+  left: {
+    checkpointId: string;
+    receiptId: string;
+    branchId: string;
+    branchLabel: string;
+  };
+  right: {
+    checkpointId: string;
+    receiptId: string;
+    branchId: string;
+    branchLabel: string;
+  };
+  common: {
+    checkpointId: string;
+    receiptId: string;
+  };
+  resultBranchId: string;
+  summary: {
+    sharedUnchanged: number;
+    sharedDiverged: number;
+    leftOnly: number;
+    rightOnly: number;
+    worldDiverged: number;
+  };
+};
+
 export type StudioTimelineLedger = {
   schemaVersion: "0.1";
   checkpoints: StudioTimelineCheckpoint[];
   branches: StudioSessionBranch[];
+  relations?: StudioTimelineRelation[];
 };
 
 export type StudioTimelineNode = {
   id: string;
-  kind: "receipt" | "branch";
+  kind: "receipt" | "branch" | "relation";
   label: string;
   receiptId?: string;
   branchId?: string;
+  relationId?: string;
   checkpointId?: string;
   phase?: "projected" | "rendered";
 };
@@ -62,7 +93,7 @@ export type StudioTimelineEdge = {
   id: string;
   from: string;
   to: string;
-  kind: "continuity" | "fork";
+  kind: "continuity" | "fork" | "observes" | "composes";
 };
 
 export type StudioTimelineGraph = {
@@ -102,6 +133,16 @@ const uniqueBranches = (
   const byId = new Map<string, StudioSessionBranch>();
   for (const branch of branches) {
     byId.set(branch.id, branch);
+  }
+  return [...byId.values()];
+};
+
+const uniqueRelations = (
+  relations: StudioTimelineRelation[],
+): StudioTimelineRelation[] => {
+  const byId = new Map<string, StudioTimelineRelation>();
+  for (const relation of relations) {
+    byId.set(relation.id, relation);
   }
   return [...byId.values()];
 };
@@ -196,6 +237,7 @@ export const emptyStudioTimeline = (): StudioTimelineLedger => ({
   schemaVersion: "0.1",
   checkpoints: [],
   branches: [],
+  relations: [],
 });
 
 export const mergeStudioTimelineLedgers = (
@@ -208,6 +250,9 @@ export const mergeStudioTimelineLedgers = (
   branches: uniqueBranches(
     ledgers.flatMap((ledger) => ledger?.branches ?? []),
   ),
+  relations: uniqueRelations(
+    ledgers.flatMap((ledger) => ledger?.relations ?? []),
+  ),
 });
 
 export const ensureStudioTimeline = (
@@ -219,6 +264,7 @@ export const ensureStudioTimeline = (
       schemaVersion: "0.1",
       checkpoints: current ? [current] : [],
       branches: archive.branch ? [archive.branch] : [],
+      relations: [],
     },
     archive.timeline,
   );
@@ -232,6 +278,7 @@ export const appendStudioTimelineCheckpoint = (
     schemaVersion: "0.1",
     checkpoints: [checkpoint],
     branches: [],
+    relations: [],
   });
 
 export const appendStudioTimelineBranch = (
@@ -242,6 +289,18 @@ export const appendStudioTimelineBranch = (
     schemaVersion: "0.1",
     checkpoints: [],
     branches: [branch],
+    relations: [],
+  });
+
+export const appendStudioTimelineRelation = (
+  timeline: StudioTimelineLedger,
+  relation: StudioTimelineRelation,
+): StudioTimelineLedger =>
+  mergeStudioTimelineLedgers(timeline, {
+    schemaVersion: "0.1",
+    checkpoints: [],
+    branches: [],
+    relations: [relation],
   });
 
 const assertTimeline = (
@@ -294,6 +353,44 @@ const assertTimeline = (
       );
     }
     branchIds.add(branch.id);
+  }
+
+  const relationIds = new Set<string>();
+  for (const relation of timeline.relations ?? []) {
+    if (relationIds.has(relation.id)) {
+      throw new Error(
+        `Duplicate timeline relation "${relation.id}".`,
+      );
+    }
+    relationIds.add(relation.id);
+
+    const left = timeline.checkpoints.find(
+      (checkpoint) =>
+        checkpoint.id === relation.left.checkpointId &&
+        checkpoint.receipt.id === relation.left.receiptId,
+    );
+    const right = timeline.checkpoints.find(
+      (checkpoint) =>
+        checkpoint.id === relation.right.checkpointId &&
+        checkpoint.receipt.id === relation.right.receiptId,
+    );
+    const common = timeline.checkpoints.find(
+      (checkpoint) =>
+        checkpoint.id === relation.common.checkpointId &&
+        checkpoint.receipt.id === relation.common.receiptId,
+    );
+
+    if (!left || !right || !common) {
+      throw new Error(
+        `Timeline relation "${relation.id}" cites missing checkpoints.`,
+      );
+    }
+
+    if (!branchIds.has(relation.resultBranchId)) {
+      throw new Error(
+        `Timeline relation "${relation.id}" cites missing result branch "${relation.resultBranchId}".`,
+      );
+    }
   }
 };
 
@@ -687,6 +784,12 @@ export const buildStudioTimelineGraph = (
       label: branch.label,
       branchId: branch.id,
     })),
+    ...(timeline.relations ?? []).map((relation) => ({
+      id: `relation:${relation.id}`,
+      kind: "relation" as const,
+      label: `${relation.left.branchLabel} ↔ ${relation.right.branchLabel}`,
+      relationId: relation.id,
+    })),
   ];
 
   const edges: StudioTimelineEdge[] = [];
@@ -698,6 +801,29 @@ export const buildStudioTimelineGraph = (
       to: `branch:${branch.id}`,
       kind: "fork",
     });
+  }
+
+  for (const relation of timeline.relations ?? []) {
+    edges.push(
+      {
+        id: `observes:${relation.left.receiptId}->${relation.id}:left`,
+        from: `receipt:${relation.left.receiptId}`,
+        to: `relation:${relation.id}`,
+        kind: "observes",
+      },
+      {
+        id: `observes:${relation.right.receiptId}->${relation.id}:right`,
+        from: `receipt:${relation.right.receiptId}`,
+        to: `relation:${relation.id}`,
+        kind: "observes",
+      },
+      {
+        id: `composes:${relation.id}->${relation.resultBranchId}`,
+        from: `relation:${relation.id}`,
+        to: `branch:${relation.resultBranchId}`,
+        kind: "composes",
+      },
+    );
   }
 
   for (const checkpoint of timeline.checkpoints) {
