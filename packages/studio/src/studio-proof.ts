@@ -1439,7 +1439,7 @@ writeFileSync(
   ecologyPath,
   JSON.stringify(
     {
-      scraped: ecologyOne,
+      scraped: scrapedEcology,
       kept: keptEcology,
       graph: ecologyGraph,
     },
