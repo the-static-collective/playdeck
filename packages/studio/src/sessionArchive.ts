@@ -1,6 +1,7 @@
 import type {
   DeckSpec,
   PerformanceReceipt,
+  WorldRule,
 } from "@playdeck/core";
 import type {
   StudioAssetPayload,
@@ -71,20 +72,89 @@ export type StudioTimelineRelation = {
   };
 };
 
+export type StudioAuthorityClass =
+  | "evidence"
+  | "uncertainty"
+  | "proposal"
+  | "influence-only"
+  | "continuation-permission"
+  | "resolved-execution";
+
+export type StudioHauntCapsule = {
+  id: string;
+  kind: "static-collective/causal-capsule/v1";
+  authorityClass: "influence-only";
+  originRelationId: string;
+  sourceReceiptIds: string[];
+  sourceCheckpointId: string;
+  surface: "possibility-search";
+  invitation: string;
+  residue: string[];
+  unresolved: string[];
+  refused: string[];
+};
+
+export type StudioPossibilityProposal = {
+  id: string;
+  slot: number;
+  authorityClass: "proposal";
+  label: string;
+  invitation: string;
+  seed: string;
+  worldPatch: Partial<
+    Pick<
+      WorldRule,
+      "physical" | "surface" | "transition" | "awakening"
+    >
+  >;
+  traits: string[];
+};
+
+export type StudioPossibilityDisposition =
+  | {
+      kind: "KEEP";
+      proposalId: string;
+      authorityClass: "continuation-permission";
+      resultBranchId: string;
+    }
+  | {
+      kind: "SCRAPE";
+    };
+
+export type StudioPossibilityEcology = {
+  id: string;
+  kind: "haunted-possibility-ecology";
+  relationId: string;
+  commonCheckpointId: string;
+  generation: number;
+  capsule: StudioHauntCapsule;
+  proposals: StudioPossibilityProposal[];
+  disposition?: StudioPossibilityDisposition;
+};
+
 export type StudioTimelineLedger = {
   schemaVersion: "0.1";
   checkpoints: StudioTimelineCheckpoint[];
   branches: StudioSessionBranch[];
   relations?: StudioTimelineRelation[];
+  ecologies?: StudioPossibilityEcology[];
 };
 
 export type StudioTimelineNode = {
   id: string;
-  kind: "receipt" | "branch" | "relation";
+  kind:
+    | "receipt"
+    | "branch"
+    | "relation"
+    | "capsule"
+    | "proposal";
   label: string;
   receiptId?: string;
   branchId?: string;
   relationId?: string;
+  ecologyId?: string;
+  proposalId?: string;
+  authorityClass?: StudioAuthorityClass;
   checkpointId?: string;
   phase?: "projected" | "rendered";
 };
@@ -93,7 +163,14 @@ export type StudioTimelineEdge = {
   id: string;
   from: string;
   to: string;
-  kind: "continuity" | "fork" | "observes" | "composes";
+  kind:
+    | "continuity"
+    | "fork"
+    | "observes"
+    | "composes"
+    | "haunts"
+    | "proposes"
+    | "keeps";
 };
 
 export type StudioTimelineGraph = {
@@ -143,6 +220,16 @@ const uniqueRelations = (
   const byId = new Map<string, StudioTimelineRelation>();
   for (const relation of relations) {
     byId.set(relation.id, relation);
+  }
+  return [...byId.values()];
+};
+
+const uniqueEcologies = (
+  ecologies: StudioPossibilityEcology[],
+): StudioPossibilityEcology[] => {
+  const byId = new Map<string, StudioPossibilityEcology>();
+  for (const ecology of ecologies) {
+    byId.set(ecology.id, ecology);
   }
   return [...byId.values()];
 };
@@ -238,6 +325,7 @@ export const emptyStudioTimeline = (): StudioTimelineLedger => ({
   checkpoints: [],
   branches: [],
   relations: [],
+  ecologies: [],
 });
 
 export const mergeStudioTimelineLedgers = (
@@ -253,6 +341,9 @@ export const mergeStudioTimelineLedgers = (
   relations: uniqueRelations(
     ledgers.flatMap((ledger) => ledger?.relations ?? []),
   ),
+  ecologies: uniqueEcologies(
+    ledgers.flatMap((ledger) => ledger?.ecologies ?? []),
+  ),
 });
 
 export const ensureStudioTimeline = (
@@ -265,6 +356,7 @@ export const ensureStudioTimeline = (
       checkpoints: current ? [current] : [],
       branches: archive.branch ? [archive.branch] : [],
       relations: [],
+      ecologies: [],
     },
     archive.timeline,
   );
@@ -279,6 +371,7 @@ export const appendStudioTimelineCheckpoint = (
     checkpoints: [checkpoint],
     branches: [],
     relations: [],
+    ecologies: [],
   });
 
 export const appendStudioTimelineBranch = (
@@ -290,6 +383,7 @@ export const appendStudioTimelineBranch = (
     checkpoints: [],
     branches: [branch],
     relations: [],
+    ecologies: [],
   });
 
 export const appendStudioTimelineRelation = (
@@ -301,6 +395,19 @@ export const appendStudioTimelineRelation = (
     checkpoints: [],
     branches: [],
     relations: [relation],
+    ecologies: [],
+  });
+
+export const appendStudioPossibilityEcology = (
+  timeline: StudioTimelineLedger,
+  ecology: StudioPossibilityEcology,
+): StudioTimelineLedger =>
+  mergeStudioTimelineLedgers(timeline, {
+    schemaVersion: "0.1",
+    checkpoints: [],
+    branches: [],
+    relations: [],
+    ecologies: [ecology],
   });
 
 const assertTimeline = (
@@ -390,6 +497,83 @@ const assertTimeline = (
       throw new Error(
         `Timeline relation "${relation.id}" cites missing result branch "${relation.resultBranchId}".`,
       );
+    }
+  }
+
+  const ecologyIds = new Set<string>();
+  for (const ecology of timeline.ecologies ?? []) {
+    if (ecologyIds.has(ecology.id)) {
+      throw new Error(
+        `Duplicate possibility ecology "${ecology.id}".`,
+      );
+    }
+    ecologyIds.add(ecology.id);
+
+    if (!relationIds.has(ecology.relationId)) {
+      throw new Error(
+        `Possibility ecology "${ecology.id}" cites missing relation "${ecology.relationId}".`,
+      );
+    }
+
+    if (
+      !timeline.checkpoints.some(
+        (checkpoint) =>
+          checkpoint.id === ecology.commonCheckpointId,
+      )
+    ) {
+      throw new Error(
+        `Possibility ecology "${ecology.id}" cites missing common checkpoint.`,
+      );
+    }
+
+    if (
+      ecology.capsule.kind !==
+        "static-collective/causal-capsule/v1" ||
+      ecology.capsule.authorityClass !== "influence-only" ||
+      ecology.capsule.originRelationId !== ecology.relationId ||
+      ecology.capsule.sourceCheckpointId !==
+        ecology.commonCheckpointId
+    ) {
+      throw new Error(
+        `Possibility ecology "${ecology.id}" has an invalid influence capsule.`,
+      );
+    }
+
+    if (ecology.proposals.length !== 6) {
+      throw new Error(
+        `Possibility ecology "${ecology.id}" must contain exactly six proposals.`,
+      );
+    }
+
+    const proposalIds = new Set<string>();
+    const slots = new Set<number>();
+    for (const proposal of ecology.proposals) {
+      if (
+        proposal.authorityClass !== "proposal" ||
+        proposal.slot < 1 ||
+        proposal.slot > 6 ||
+        proposalIds.has(proposal.id) ||
+        slots.has(proposal.slot)
+      ) {
+        throw new Error(
+          `Possibility ecology "${ecology.id}" has an invalid proposal family.`,
+        );
+      }
+      proposalIds.add(proposal.id);
+      slots.add(proposal.slot);
+    }
+
+    if (ecology.disposition?.kind === "KEEP") {
+      if (
+        !proposalIds.has(ecology.disposition.proposalId) ||
+        ecology.disposition.authorityClass !==
+          "continuation-permission" ||
+        !branchIds.has(ecology.disposition.resultBranchId)
+      ) {
+        throw new Error(
+          `Possibility ecology "${ecology.id}" has an invalid KEEP disposition.`,
+        );
+      }
     }
   }
 };
@@ -776,20 +960,51 @@ export const buildStudioTimelineGraph = (
         receiptId: receipt.id,
         checkpointId: checkpoint?.id,
         phase: receipt.phase,
+        authorityClass: "resolved-execution" as const,
       };
     }),
-    ...timeline.branches.map((branch) => ({
-      id: `branch:${branch.id}`,
-      kind: "branch" as const,
-      label: branch.label,
-      branchId: branch.id,
-    })),
+    ...timeline.branches.map((branch) => {
+      const kept = (timeline.ecologies ?? []).find(
+        (ecology) =>
+          ecology.disposition?.kind === "KEEP" &&
+          ecology.disposition.resultBranchId === branch.id,
+      );
+      return {
+        id: `branch:${branch.id}`,
+        kind: "branch" as const,
+        label: branch.label,
+        branchId: branch.id,
+        ...(kept
+          ? {
+              authorityClass:
+                "continuation-permission" as const,
+            }
+          : {}),
+      };
+    }),
     ...(timeline.relations ?? []).map((relation) => ({
       id: `relation:${relation.id}`,
       kind: "relation" as const,
       label: `${relation.left.branchLabel} ↔ ${relation.right.branchLabel}`,
       relationId: relation.id,
     })),
+    ...(timeline.ecologies ?? []).flatMap((ecology) => [
+      {
+        id: `capsule:${ecology.capsule.id}`,
+        kind: "capsule" as const,
+        label: ecology.capsule.invitation,
+        ecologyId: ecology.id,
+        authorityClass: "influence-only" as const,
+      },
+      ...ecology.proposals.map((proposal) => ({
+        id: `proposal:${proposal.id}`,
+        kind: "proposal" as const,
+        label: proposal.label,
+        ecologyId: ecology.id,
+        proposalId: proposal.id,
+        authorityClass: "proposal" as const,
+      })),
+    ]),
   ];
 
   const edges: StudioTimelineEdge[] = [];
@@ -824,6 +1039,33 @@ export const buildStudioTimelineGraph = (
         kind: "composes",
       },
     );
+  }
+
+  for (const ecology of timeline.ecologies ?? []) {
+    edges.push({
+      id: `haunts:${ecology.relationId}->${ecology.capsule.id}`,
+      from: `relation:${ecology.relationId}`,
+      to: `capsule:${ecology.capsule.id}`,
+      kind: "haunts",
+    });
+
+    for (const proposal of ecology.proposals) {
+      edges.push({
+        id: `proposes:${ecology.capsule.id}->${proposal.id}`,
+        from: `capsule:${ecology.capsule.id}`,
+        to: `proposal:${proposal.id}`,
+        kind: "proposes",
+      });
+    }
+
+    if (ecology.disposition?.kind === "KEEP") {
+      edges.push({
+        id: `keeps:${ecology.disposition.proposalId}->${ecology.disposition.resultBranchId}`,
+        from: `proposal:${ecology.disposition.proposalId}`,
+        to: `branch:${ecology.disposition.resultBranchId}`,
+        kind: "keeps",
+      });
+    }
   }
 
   for (const checkpoint of timeline.checkpoints) {
