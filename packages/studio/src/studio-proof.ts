@@ -16,9 +16,14 @@ import {commitStudioPayload} from "./commitServer";
 import {prepareNextSong} from "./nextSongServer";
 import {recomposeStudioPlan} from "./recompose";
 import {
+  appendStudioTimelineCheckpoint,
+  buildStudioTimelineGraph,
   createStudioSessionArchive,
+  ensureStudioTimeline,
   forkStudioSessionArchive,
+  mergeStudioSessionTimelines,
   parseStudioSessionArchive,
+  restoreStudioSessionAtCheckpoint,
   serializeStudioSessionArchive,
 } from "./sessionArchive";
 import {
@@ -551,6 +556,184 @@ for (const [archive, future] of [
   }
 }
 
+const archiveAfterBranchFuture = (
+  archive: typeof branchAmber,
+  future: typeof amberFuture,
+  surface: string,
+) => {
+  const inputDeck = archive.checkpoint?.inheritedDeck;
+  if (!inputDeck || !future.committed.inheritedDeck) {
+    throw new Error("Cannot snapshot branch future without both decks.");
+  }
+
+  const futureWorld = {
+    ...archive.session.worldRule,
+    surface,
+  };
+  const futureSession = {
+    ...archive.session,
+    deck: inputDeck,
+    track: future.prepared.track,
+    worldRule: futureWorld,
+    plan: future.prepared.plan,
+    envelope: future.prepared.envelope,
+    receipt: future.committed.receipt,
+  };
+  const futureReceipts = [
+    ...archive.receipts.filter(
+      (receipt) =>
+        receipt.id !== future.committed.receipt.id,
+    ),
+    future.committed.receipt,
+  ];
+  const futureAssets = {
+    ...archive.assets,
+    [future.prepared.track.source]:
+      future.prepared.audioAsset,
+    ...future.committed.newAssets,
+  };
+  const futureQueue = archive.queue.slice(1);
+
+  const timeline = appendStudioTimelineCheckpoint(
+    ensureStudioTimeline(archive),
+    {
+      id: future.committed.id,
+      receipt: future.committed.receipt,
+      inheritedDeck: future.committed.inheritedDeck,
+      parentReceiptId:
+        archive.checkpoint?.receipt.id,
+      branchId: archive.branch?.id,
+      state: {
+        session: futureSession,
+        assets: futureAssets,
+        queue: futureQueue,
+        receipts: futureReceipts,
+        preferences: archive.preferences,
+        dirty: false,
+      },
+    },
+  );
+
+  return createStudioSessionArchive({
+    session: futureSession,
+    assets: futureAssets,
+    queue: futureQueue,
+    receipts: futureReceipts,
+    checkpoint: {
+      id: future.committed.id,
+      receipt: future.committed.receipt,
+      inheritedDeck: future.committed.inheritedDeck,
+    },
+    branch: archive.branch,
+    timeline,
+    inheritAfterRender:
+      archive.preferences.inheritAfterRender,
+    dirty: false,
+  });
+};
+
+const amberArchive = archiveAfterBranchFuture(
+  branchAmber,
+  amberFuture,
+  "amber-branch-surface",
+);
+const blueArchive = archiveAfterBranchFuture(
+  branchBlue,
+  blueFuture,
+  "blue-branch-surface",
+);
+
+const mergedTimeline = mergeStudioSessionTimelines(
+  amberArchive,
+  [blueArchive],
+);
+const timelineGraph = buildStudioTimelineGraph(
+  mergedTimeline,
+);
+
+const requiredTimelineNodes = [
+  `receipt:${second.receipt.id}`,
+  `branch:${branchAmber.branch?.id}`,
+  `branch:${branchBlue.branch?.id}`,
+  `receipt:${amberFuture.committed.receipt.id}`,
+  `receipt:${blueFuture.committed.receipt.id}`,
+];
+
+for (const nodeId of requiredTimelineNodes) {
+  if (!timelineGraph.nodes.some((node) => node.id === nodeId)) {
+    throw new Error(
+      `Timeline graph is missing required node "${nodeId}".`,
+    );
+  }
+}
+
+for (const branchArchive of [amberArchive, blueArchive]) {
+  const branchId = branchArchive.branch?.id;
+  if (!branchId) {
+    throw new Error("Merged timeline branch lacks identity.");
+  }
+
+  const forkEdge = timelineGraph.edges.find(
+    (edge) =>
+      edge.kind === "fork" &&
+      edge.from === `receipt:${second.receipt.id}` &&
+      edge.to === `branch:${branchId}`,
+  );
+  if (!forkEdge) {
+    throw new Error(
+      `Timeline graph is missing fork edge for "${branchId}".`,
+    );
+  }
+}
+
+for (const [archive, future] of [
+  [amberArchive, amberFuture],
+  [blueArchive, blueFuture],
+] as const) {
+  const branchId = archive.branch?.id;
+  const futureEdge = timelineGraph.edges.find(
+    (edge) =>
+      edge.from === `branch:${branchId}` &&
+      edge.to ===
+        `receipt:${future.committed.receipt.id}`,
+  );
+  if (!futureEdge) {
+    throw new Error(
+      `Timeline graph is missing branch future edge for "${branchId}".`,
+    );
+  }
+}
+
+const jumpedAmber = restoreStudioSessionAtCheckpoint(
+  amberArchive,
+  amberFuture.committed.id,
+);
+if (
+  jumpedAmber.checkpoint?.receipt.id !==
+    amberFuture.committed.receipt.id ||
+  jumpedAmber.branch?.id !== branchAmber.branch?.id
+) {
+  throw new Error(
+    "Timeline jump failed to restore the selected Amber checkpoint.",
+  );
+}
+
+const violetSibling = forkStudioSessionArchive(
+  amberArchive,
+  "violet-world",
+  second.id,
+);
+if (
+  violetSibling.branch?.forkedFromReceipt !==
+    second.receipt.id ||
+  violetSibling.branch?.parentId
+) {
+  throw new Error(
+    "Forking from the older shared graph node must create a sibling, not a child of Amber.",
+  );
+}
+
+
 console.log(
   JSON.stringify({
     bundle: session.bundleName,
@@ -577,6 +760,14 @@ console.log(
     amberReceipt: amberFuture.committed.receipt.id,
     blueReceipt: blueFuture.committed.receipt.id,
     siblingSharedReceiptCount: branchAmber.receipts.length,
+    timelineNodes: timelineGraph.nodes.length,
+    timelineEdges: timelineGraph.edges.length,
+    timelineCheckpointCount:
+      mergedTimeline.checkpoints.length,
+    jumpedAmberReceipt:
+      jumpedAmber.checkpoint?.receipt.id,
+    violetSibling:
+      violetSibling.branch?.id,
     firstNewAssets: Object.keys(first.newAssets).length,
     secondNewAssets: Object.keys(second.newAssets).length,
     thirdNewAssets: Object.keys(third.newAssets).length,
