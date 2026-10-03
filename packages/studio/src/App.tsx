@@ -35,11 +35,17 @@ import type {
 import {recomposeStudioPlan} from "./recompose";
 import {TimelineTree} from "./TimelineTree";
 import {
+  createStudioPossibilityEcology,
+  keepStudioPossibility,
+  scrapeStudioPossibilityEcology,
+} from "./possibilityEcology";
+import {
   compareStudioBranchCheckpoints,
   composeStudioRelationBranch,
   type StudioBranchRelation,
 } from "./branchRelation";
 import {
+  appendStudioPossibilityEcology,
   appendStudioTimelineCheckpoint,
   buildStudioTimelineGraph,
   createStudioSessionArchive,
@@ -178,6 +184,27 @@ export const App: React.FC = () => {
           )
         : undefined,
     [timeline.relations, selectedTimelineNode],
+  );
+  const selectedTimelineEcology = useMemo(
+    () =>
+      selectedTimelineNode?.ecologyId
+        ? (timeline.ecologies ?? []).find(
+            (ecology) =>
+              ecology.id === selectedTimelineNode.ecologyId,
+          )
+        : undefined,
+    [timeline.ecologies, selectedTimelineNode],
+  );
+  const selectedTimelineProposal = useMemo(
+    () =>
+      selectedTimelineEcology &&
+      selectedTimelineNode?.proposalId
+        ? selectedTimelineEcology.proposals.find(
+            (proposal) =>
+              proposal.id === selectedTimelineNode.proposalId,
+          )
+        : undefined,
+    [selectedTimelineEcology, selectedTimelineNode],
   );
 
   const branchComparison = useMemo<{
@@ -471,6 +498,73 @@ export const App: React.FC = () => {
     }
   };
 
+  const growPossibilityEcology = (
+    relationId: string,
+  ) => {
+    try {
+      setError(null);
+      const ecology = createStudioPossibilityEcology(
+        timeline,
+        relationId,
+      );
+      setTimeline(
+        appendStudioPossibilityEcology(
+          timeline,
+          ecology,
+        ),
+      );
+      setSelectedTimelineNodeId(
+        `capsule:${ecology.capsule.id}`,
+      );
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : String(reason),
+      );
+    }
+  };
+
+  const keepPossibility = async (
+    ecologyId: string,
+    proposalId: string,
+  ) => {
+    try {
+      setError(null);
+      const source = await captureCurrentArchive();
+      const kept = keepStudioPossibility(
+        source,
+        ecologyId,
+        proposalId,
+      );
+      downloadJson(
+        `${ecologyId}--KEEP--${proposalId}.playdeck-session.json`,
+        kept,
+      );
+      restoreSessionArchive(kept);
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : String(reason),
+      );
+    }
+  };
+
+  const scrapePossibilityFamily = async (
+    ecologyId: string,
+  ) => {
+    try {
+      setError(null);
+      const source = await captureCurrentArchive();
+      const scraped = scrapeStudioPossibilityEcology(
+        source,
+        ecologyId,
+      );
+      restoreSessionArchive(scraped);
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : String(reason),
+      );
+    }
+  };
+
   const composeRelationTimeline = async () => {
     const relation = branchComparison.relation;
     if (!session || !relation) return;
@@ -748,7 +842,7 @@ export const App: React.FC = () => {
     return (
       <main className="landing">
         <section className="landing-card">
-          <div className="eyebrow">PLAYDECK / STUDIO 009</div>
+          <div className="eyebrow">PLAYDECK / STUDIO 010</div>
           <h1>Open the room.</h1>
           <p>
             Load any PlayDeck output bundle. Studio reconstructs its
@@ -795,7 +889,7 @@ export const App: React.FC = () => {
     <main className="studio-shell">
       <header className="topbar">
         <div>
-          <div className="eyebrow">PLAYDECK / STUDIO 009</div>
+          <div className="eyebrow">PLAYDECK / STUDIO 010</div>
           <h1>{session.deck.title ?? session.deck.id}</h1>
         </div>
         <div className="top-actions">
@@ -1019,7 +1113,7 @@ export const App: React.FC = () => {
               <div>
                 <span className="panel-kicker">CREATIVE CAUSAL GRAPH</span>
                 <strong>
-                  {timelineGraph.nodes.length} nodes · {timelineGraph.edges.length} edges · {(timeline.relations ?? []).length} relations
+                  {timelineGraph.nodes.length} nodes · {timelineGraph.edges.length} edges · {(timeline.relations ?? []).length} relations · {(timeline.ecologies ?? []).length} ecologies
                 </strong>
               </div>
               <label className="timeline-import-button">
@@ -1057,7 +1151,90 @@ export const App: React.FC = () => {
                         {selectedTimelineNode.label}
                       </strong>
                     </div>
-                    {selectedTimelineRelation ? (
+                    {selectedTimelineEcology ? (
+                      <div className="possibility-node-inspector">
+                        <div className="possibility-authority">
+                          <span>
+                            {selectedTimelineNode.kind === "capsule"
+                              ? "INFLUENCE CAPSULE"
+                              : "PROPOSAL"}
+                          </span>
+                          <strong>
+                            {selectedTimelineNode.authorityClass}
+                          </strong>
+                          <small>
+                            generation {selectedTimelineEcology.generation} ·{" "}
+                            {selectedTimelineEcology.disposition?.kind ?? "OPEN"}
+                          </small>
+                        </div>
+
+                        {selectedTimelineProposal ? (
+                          <div className="possibility-proposal-detail">
+                            <span>
+                              SLOT {selectedTimelineProposal.slot}
+                            </span>
+                            <strong>
+                              {selectedTimelineProposal.label}
+                            </strong>
+                            <small>
+                              {selectedTimelineProposal.invitation}
+                            </small>
+                            <code>
+                              {JSON.stringify(
+                                selectedTimelineProposal.worldPatch,
+                              )}
+                            </code>
+                          </div>
+                        ) : (
+                          <div className="possibility-capsule-detail">
+                            <span>INVITATION</span>
+                            <strong>
+                              {selectedTimelineEcology.capsule.invitation}
+                            </strong>
+                            <small>
+                              {selectedTimelineEcology.capsule.residue.join(
+                                " · ",
+                              )}
+                            </small>
+                          </div>
+                        )}
+
+                        {!selectedTimelineEcology.disposition ? (
+                          <div className="possibility-node-actions">
+                            {selectedTimelineProposal ? (
+                              <button
+                                className="keep-possibility"
+                                onClick={() =>
+                                  keepPossibility(
+                                    selectedTimelineEcology.id,
+                                    selectedTimelineProposal.id,
+                                  )
+                                }
+                              >
+                                KEEP → branch
+                              </button>
+                            ) : null}
+                            <button
+                              className="scrape-possibility"
+                              onClick={() =>
+                                scrapePossibilityFamily(
+                                  selectedTimelineEcology.id,
+                                )
+                              }
+                            >
+                              SCRAPE family
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="possibility-disposition">
+                            {selectedTimelineEcology.disposition.kind ===
+                            "KEEP"
+                              ? `KEEP → ${selectedTimelineEcology.disposition.resultBranchId}`
+                              : "SCRAPED · no ancestry created"}
+                          </div>
+                        )}
+                      </div>
+                    ) : selectedTimelineRelation ? (
                       <div className="relation-node-inspector">
                         <div>
                           <span>OBSERVES A</span>
@@ -1094,6 +1271,16 @@ export const App: React.FC = () => {
                             {selectedTimelineRelation.summary.worldDiverged} world diffs
                           </small>
                         </div>
+                        <button
+                          className="grow-possibilities"
+                          onClick={() =>
+                            growPossibilityEcology(
+                              selectedTimelineRelation.id,
+                            )
+                          }
+                        >
+                          Grow six possibilities
+                        </button>
                       </div>
                     ) : selectedTimelineNode.checkpointId ? (
                       <div className="timeline-node-actions">
