@@ -150,12 +150,20 @@ export const TimelineTree: React.FC<{
                   ? "BRANCH"
                   : node.kind === "relation"
                     ? "RELATION"
-                    : node.checkpointId
-                      ? "CHECKPOINT"
-                      : "RECEIPT"}
+                    : node.kind === "capsule"
+                      ? "HAUNT"
+                      : node.kind === "proposal"
+                        ? "PROPOSAL"
+                        : node.checkpointId
+                          ? "CHECKPOINT"
+                          : "RECEIPT"}
               </span>
               <strong>{node.label}</strong>
-              {node.phase ? <small>{node.phase}</small> : null}
+              {node.authorityClass ? (
+                <small>{node.authorityClass}</small>
+              ) : node.phase ? (
+                <small>{node.phase}</small>
+              ) : null}
             </button>
           );
         })}
