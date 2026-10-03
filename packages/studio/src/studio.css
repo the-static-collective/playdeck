@@ -980,3 +980,65 @@ button {
   color: #c79797;
   background: rgba(128, 58, 58, 0.08);
 }
+
+
+.timeline-edge.observes {
+  stroke: rgba(116, 171, 196, 0.58);
+  stroke-dasharray: 2 5;
+}
+
+.timeline-edge.composes {
+  stroke: rgba(219, 157, 102, 0.7);
+  stroke-width: 2;
+}
+
+.timeline-tree-node.relation {
+  border-color: rgba(116, 171, 196, 0.5);
+  background:
+    linear-gradient(135deg, rgba(63, 104, 126, 0.2), rgba(97, 61, 113, 0.18)),
+    #11151f;
+}
+
+.timeline-tree-node.relation span {
+  color: #8bb7c9;
+}
+
+.relation-node-inspector {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(150px, 1fr));
+  gap: 6px;
+  flex: 1 1 520px;
+}
+
+.relation-node-inspector > div {
+  min-width: 0;
+  padding: 6px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(9, 12, 19, 0.7);
+}
+
+.relation-node-inspector span,
+.relation-node-inspector strong,
+.relation-node-inspector small {
+  display: block;
+}
+
+.relation-node-inspector span {
+  color: #798896;
+  font-size: 7px;
+  letter-spacing: 0.11em;
+}
+
+.relation-node-inspector strong {
+  margin-top: 2px;
+  color: #d8d7df;
+  font-size: 9px;
+  overflow-wrap: anywhere;
+}
+
+.relation-node-inspector small {
+  margin-top: 2px;
+  color: #706f7a;
+  font-size: 8px;
+  overflow-wrap: anywhere;
+}
