@@ -4,11 +4,13 @@ import type {
   WorldRule,
 } from "@playdeck/core";
 import {
+  appendStudioTimelineRelation,
   ensureStudioTimeline,
   forkStudioSessionArchive,
   type StudioSessionArchive,
   type StudioTimelineCheckpoint,
   type StudioTimelineLedger,
+  type StudioTimelineRelation,
 } from "./sessionArchive";
 
 export type StudioBranchRelation = {
@@ -336,8 +338,28 @@ export const composeStudioRelationBranch = (
     },
   };
 
+  const timelineRelation: StudioTimelineRelation = {
+    id: relation.id,
+    kind: "branch-relation",
+    left: relation.left,
+    right: relation.right,
+    common: relation.common,
+    resultBranchId: forked.branch!.id,
+    summary: {
+      sharedUnchanged: relation.cards.sharedUnchanged.length,
+      sharedDiverged: relation.cards.sharedDiverged.length,
+      leftOnly: relation.cards.leftOnly.length,
+      rightOnly: relation.cards.rightOnly.length,
+      worldDiverged: relation.world.diverged.length,
+    },
+  };
+
   return {
     ...forked,
+    timeline: appendStudioTimelineRelation(
+      ensureStudioTimeline(forked),
+      timelineRelation,
+    ),
     checkpoint: {
       ...forked.checkpoint,
       inheritedDeck,
