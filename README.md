@@ -510,7 +510,7 @@ The plan survives the renderer.
 
 ## Studio
 
-Studio 009 is live in `packages/studio`.
+Studio 010 is live in `packages/studio`.
 
 ~~~bash
 npm run studio
@@ -567,6 +567,14 @@ A human can:
 - show which witnessed futures a relation observed without claiming those futures as ancestors
 - connect a relation node to the branch it helped compose while retaining that branch's independent fork from shared history
 - inspect relation provenance and divergence summaries directly from the graph
+- grow a deterministic six-up possibility ecology from any branch-relation node
+- route relation residue through a portable `static-collective/causal-capsule/v1` marked `influence-only`
+- display capsule and proposal nodes in the same causal graph without treating them as receipts
+- KEEP exactly one proposal as explicit continuation permission into a new branch
+- SCRAPE a whole six-up without creating ancestry, receipts, or a negative-preference model
+- open a new deterministic ecology generation only after the current family is KEEP/SCRAPE resolved
+- preserve authority classes across the crossing: `influence-only -> proposal -> continuation-permission -> resolved-execution`
+- compose a KEEP-authorized next song from the explicit `kept-possibility` entrance
 
 The cockpit commit is local-only and bounded. The browser sends structured state plus selected bundle media to its own localhost Studio server; a dedicated worker performs the render. It does not expose arbitrary shell execution.
 
@@ -766,6 +774,88 @@ RELATION NODE != MERGE COMMIT
 MULTIPLE CAUSES != ONE COLLAPSED HISTORY
 ~~~
 
+Studio 010 adds a bounded possibility ecology around that causal graph:
+
+~~~text
+                 AMBER receipt
+                      \
+                       \ observes
+                        v
+                  [RELATION]
+                        |
+                        | haunts
+                        v
+               [INFLUENCE CAPSULE]
+                        |
+                 proposal family
+          /------+------+------+------+------+------\
+         p1     p2     p3     p4     p5     p6
+                       |
+                    human KEEP
+                       |
+                       v
+                    BRANCH
+                       |
+                    render
+                       |
+                       v
+                    RECEIPT
+~~~
+
+The capsule is explicitly `influence-only`. Every six-up member is explicitly a `proposal`. Merely focusing, inspecting, or generating a proposal cannot create ancestry.
+
+The human has two family dispositions:
+
+~~~text
+KEEP
+= permit exactly one proposal to continue
+
+SCRAPE
+= close this family and permit a new deterministic search
+
+SCRAPE != six negative ratings
+SCRAPE != permanent feature blacklist
+~~~
+
+Only the kept proposal gains a `keeps` edge into a branch. The branch still forks historically from the relation's shared witnessed checkpoint; KEEP is continuation permission, not retroactive history.
+
+The graph now distinguishes seven edge meanings:
+
+~~~text
+fork       = historical branch origin
+continuity = witnessed history inside a branch
+observes   = evidence consulted by a relation
+composes   = creative influence on a branch
+haunts     = bounded influence-only memory enters search
+proposes   = capsule opens a non-authoritative possibility
+keeps      = human grants one proposal continuation permission
+~~~
+
+And four authority stages are directly visible in the proof path:
+
+~~~text
+influence-only
+      |
+      v
+   proposal
+      |
+     KEEP
+      v
+continuation-permission
+      |
+   render + seal
+      v
+resolved-execution
+~~~
+
+~~~text
+PROPOSAL != HISTORY
+FOCUS != VERDICT
+INFLUENCE != EVIDENCE
+KEEP = CONTINUATION PERMISSION
+UNKEPT POSSIBILITY != FAILED HISTORY
+~~~
+
 ---
 
 ## CLI
@@ -897,6 +987,7 @@ That was enough reason to make a repository.
 [x] studio navigable timeline tree
 [x] studio cross-branch relation composition
 [x] studio creative causal graph
+[x] studio haunted possibility ecology
 [x] folder -> deck ingestion
 [x] folder + song command
 [x] persistent album deck
@@ -905,4 +996,4 @@ That was enough reason to make a repository.
 
 Current phase:
 
-> **PlayDeck can now represent history and creative influence in the same graph without confusing one for the other.**
+> **PlayDeck can now hold influence, proposals, human continuation permission, and witnessed history in one causal graph without collapsing their authority.**
