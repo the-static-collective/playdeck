@@ -582,7 +582,7 @@ export const forkStudioSessionArchive = (
     ? timeline.branches.find(
         (candidate) => candidate.id === selected.branchId,
       )
-    : source.branch;
+    : undefined;
   const parentId = sourceBranch?.id;
   const ancestorReceiptIds = selected.state.receipts.map(
     (receipt) => receipt.id,
