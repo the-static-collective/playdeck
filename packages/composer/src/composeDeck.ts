@@ -50,6 +50,15 @@ const branchRelation = (
     : undefined;
 };
 
+const possibilityKeep = (
+  deck: DeckSpec,
+): Record<string, unknown> | undefined => {
+  const keep = deck.metadata?.studioPossibilityKeep;
+  return keep && typeof keep === "object" && !Array.isArray(keep)
+    ? (keep as Record<string, unknown>)
+    : undefined;
+};
+
 const inheritedAssembly = (deck: DeckSpec): string | undefined => {
   const continuity = deck.metadata?.continuity;
   if (!continuity || typeof continuity !== "object" || Array.isArray(continuity)) {
@@ -93,18 +102,22 @@ export const composeDeck = ({
           type: "arrive",
           cards: all,
           params: {
-            from: branchRelation(deck)
-              ? "cross-branch-relation"
-              : inheritedAssembly(deck)
+            from: possibilityKeep(deck)
+              ? "kept-possibility"
+              : branchRelation(deck)
+                ? "cross-branch-relation"
+                : inheritedAssembly(deck)
                 ? `inherited-${inheritedAssembly(deck)}`
                 : deck.sourceSheets?.length
                   ? "sheet"
                   : "stack",
             to: "deck",
           },
-          because: branchRelation(deck)
-            ? "This future begins from a declared relation between alternate witnessed branches; neither source branch is inherited as history."
-            : inheritedAssembly(deck)
+          because: possibilityKeep(deck)
+            ? "This future begins from a human KEEP of one explicit proposal; the unkept family remains possibility rather than ancestry."
+            : branchRelation(deck)
+              ? "This future begins from a declared relation between alternate witnessed branches; neither source branch is inherited as history."
+              : inheritedAssembly(deck)
               ? "The deck begins from explicitly inherited prior state before becoming independently addressable again."
               : "The deck begins legible as source before its cards become independently addressable.",
         });
@@ -422,6 +435,9 @@ export const composeDeck = ({
         ...(branchRelation(deck)
           ? ["Cross-branch relation is compositional context, not inherited history."]
           : []),
+        ...(possibilityKeep(deck)
+          ? ["KEEP grants continuation permission to one proposal; sibling proposals remain non-authoritative possibilities."]
+          : []),
       ],
     },
     finalState: {
@@ -440,6 +456,9 @@ export const composeDeck = ({
       deterministic: true,
       ...(branchRelation(deck)
         ? {studioBranchRelation: branchRelation(deck)}
+        : {}),
+      ...(possibilityKeep(deck)
+        ? {studioPossibilityKeep: possibilityKeep(deck)}
         : {}),
     },
   };
