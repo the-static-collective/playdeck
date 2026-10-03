@@ -33,10 +33,18 @@ import type {
   StudioQueuedSong,
 } from "./cockpitTypes";
 import {recomposeStudioPlan} from "./recompose";
+import {TimelineTree} from "./TimelineTree";
 import {
+  appendStudioTimelineCheckpoint,
+  buildStudioTimelineGraph,
   createStudioSessionArchive,
+  emptyStudioTimeline,
+  ensureStudioTimeline,
   forkStudioSessionArchive,
+  mergeStudioTimelineLedgers,
   parseStudioSessionArchive,
+  restoreStudioSessionAtCheckpoint,
+  type StudioTimelineNode,
 } from "./sessionArchive";
 import {
   enqueueStudioSongs,
@@ -110,6 +118,10 @@ export const App: React.FC = () => {
     useState<StudioQueuedSong[]>([]);
   const [receiptHistory, setReceiptHistory] =
     useState<PerformanceReceipt[]>([]);
+  const [timeline, setTimeline] =
+    useState(emptyStudioTimeline);
+  const [selectedTimelineNodeId, setSelectedTimelineNodeId] =
+    useState<string | null>(null);
   const dynamicUrls = useRef<string[]>([]);
 
   useEffect(
@@ -135,6 +147,18 @@ export const App: React.FC = () => {
         (card) => card.id === selectedCard,
       ),
     [session, selectedCard],
+  );
+
+  const timelineGraph = useMemo(
+    () => buildStudioTimelineGraph(timeline),
+    [timeline],
+  );
+  const selectedTimelineNode = useMemo(
+    () =>
+      timelineGraph.nodes.find(
+        (node) => node.id === selectedTimelineNodeId,
+      ),
+    [timelineGraph, selectedTimelineNodeId],
   );
 
   const setRecomposed = (
@@ -186,6 +210,8 @@ export const App: React.FC = () => {
       setRuntimeAssetUrls({});
       setAlbumQueue([]);
       setReceiptHistory(next.receipt ? [next.receipt] : []);
+      setTimeline(emptyStudioTimeline());
+      setSelectedTimelineNodeId(null);
       setLastCommit(null);
       setDirty(false);
     } catch (reason) {
@@ -195,31 +221,40 @@ export const App: React.FC = () => {
     }
   };
 
+  const captureCurrentArchive = async () => {
+    if (!session) {
+      throw new Error("No Studio session is open.");
+    }
+
+    const portableAssets = await collectStudioAssets(
+      loaded,
+      runtimeAssets,
+    );
+
+    return createStudioSessionArchive({
+      session,
+      assets: portableAssets,
+      queue: albumQueue,
+      receipts: receiptHistory,
+      checkpoint: lastCommit
+        ? {
+            id: lastCommit.id,
+            receipt: lastCommit.receipt,
+            inheritedDeck: lastCommit.inheritedDeck,
+          }
+        : undefined,
+      timeline,
+      inheritAfterRender,
+      dirty,
+    });
+  };
+
   const saveSession = async () => {
     if (!session) return;
 
     try {
       setError(null);
-      const portableAssets = await collectStudioAssets(
-        loaded,
-        runtimeAssets,
-      );
-      const archive = createStudioSessionArchive({
-        session,
-        assets: portableAssets,
-        queue: albumQueue,
-        receipts: receiptHistory,
-        checkpoint: lastCommit
-          ? {
-              id: lastCommit.id,
-              receipt: lastCommit.receipt,
-              inheritedDeck: lastCommit.inheritedDeck,
-            }
-          : undefined,
-        inheritAfterRender,
-        dirty,
-      });
-
+      const archive = await captureCurrentArchive();
       downloadJson(
         `${session.deck.id}.playdeck-session.json`,
         archive,
@@ -255,6 +290,12 @@ export const App: React.FC = () => {
     setSession(archive.session);
     setAlbumQueue(archive.queue);
     setReceiptHistory(archive.receipts);
+    setTimeline(ensureStudioTimeline(archive));
+    setSelectedTimelineNodeId(
+      archive.checkpoint
+        ? `receipt:${archive.checkpoint.receipt.id}`
+        : null,
+    );
     setInheritAfterRender(
       archive.preferences.inheritAfterRender,
     );
@@ -299,8 +340,57 @@ export const App: React.FC = () => {
     }
   };
 
-  const forkTimeline = async () => {
-    if (!session || !lastCommit?.inheritedDeck) return;
+  const importTimelineSessions = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) return;
+
+    try {
+      setError(null);
+      const peers = await Promise.all(
+        files.map(async (file) =>
+          parseStudioSessionArchive(await file.text()),
+        ),
+      );
+      setTimeline((current) =>
+        mergeStudioTimelineLedgers(
+          current,
+          ...peers.map((peer) =>
+            ensureStudioTimeline(peer),
+          ),
+        ),
+      );
+      event.target.value = "";
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : String(reason),
+      );
+    }
+  };
+
+  const jumpTimeline = async (
+    checkpointId: string,
+  ) => {
+    try {
+      setError(null);
+      const source = await captureCurrentArchive();
+      const restored = restoreStudioSessionAtCheckpoint(
+        source,
+        checkpointId,
+      );
+      restoreSessionArchive(restored);
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : String(reason),
+      );
+    }
+  };
+
+  const forkTimeline = async (
+    checkpointId?: string,
+  ) => {
+    if (!session) return;
 
     const label = window.prompt(
       "Name this future branch:",
@@ -310,26 +400,11 @@ export const App: React.FC = () => {
 
     try {
       setError(null);
-      const portableAssets = await collectStudioAssets(
-        loaded,
-        runtimeAssets,
-      );
-      const source = createStudioSessionArchive({
-        session,
-        assets: portableAssets,
-        queue: albumQueue,
-        receipts: receiptHistory,
-        checkpoint: {
-          id: lastCommit.id,
-          receipt: lastCommit.receipt,
-          inheritedDeck: lastCommit.inheritedDeck,
-        },
-        inheritAfterRender,
-        dirty,
-      });
+      const source = await captureCurrentArchive();
       const forked = forkStudioSessionArchive(
         source,
         label,
+        checkpointId,
       );
 
       downloadJson(
@@ -357,13 +432,70 @@ export const App: React.FC = () => {
         extraAssets: runtimeAssets,
       });
       const result = await commitStudioPerformance(payload);
-      setLastCommit(result);
-      setReceiptHistory((current) => [
-        ...current.filter(
+      const nextReceipts = [
+        ...receiptHistory.filter(
           (receipt) => receipt.id !== result.receipt.id,
         ),
         result.receipt,
-      ]);
+      ];
+      const nextRuntimeAssets = {
+        ...runtimeAssets,
+        ...result.newAssets,
+      };
+
+      setLastCommit(result);
+      setReceiptHistory(nextReceipts);
+
+      if (result.inheritedDeck) {
+        const portableAssets = await collectStudioAssets(
+          loaded,
+          nextRuntimeAssets,
+        );
+        const branchMarker =
+          session.deck.metadata?.studioBranch;
+        const branchId =
+          branchMarker &&
+          typeof branchMarker === "object" &&
+          !Array.isArray(branchMarker) &&
+          typeof (branchMarker as Record<string, unknown>).id ===
+            "string"
+            ? String(
+                (branchMarker as Record<string, unknown>).id,
+              )
+            : undefined;
+        const parentReceiptId =
+          session.deck.inheritedReceipt?.startsWith("receipt:")
+            ? session.deck.inheritedReceipt.slice(
+                "receipt:".length,
+              )
+            : undefined;
+
+        setTimeline((current) =>
+          appendStudioTimelineCheckpoint(current, {
+            id: result.id,
+            receipt: result.receipt,
+            inheritedDeck: result.inheritedDeck!,
+            parentReceiptId,
+            branchId,
+            state: {
+              session: {
+                ...session,
+                receipt: result.receipt,
+              },
+              assets: portableAssets,
+              queue: albumQueue,
+              receipts: nextReceipts,
+              preferences: {
+                inheritAfterRender,
+              },
+              dirty: false,
+            },
+          }),
+        );
+        setSelectedTimelineNodeId(
+          `receipt:${result.receipt.id}`,
+        );
+      }
 
       if (Object.keys(result.newAssets).length > 0) {
         setRuntimeAssets((current) => ({
@@ -529,7 +661,7 @@ export const App: React.FC = () => {
     return (
       <main className="landing">
         <section className="landing-card">
-          <div className="eyebrow">PLAYDECK / STUDIO 006</div>
+          <div className="eyebrow">PLAYDECK / STUDIO 007</div>
           <h1>Open the room.</h1>
           <p>
             Load any PlayDeck output bundle. Studio reconstructs its
@@ -576,7 +708,7 @@ export const App: React.FC = () => {
     <main className="studio-shell">
       <header className="topbar">
         <div>
-          <div className="eyebrow">PLAYDECK / STUDIO 006</div>
+          <div className="eyebrow">PLAYDECK / STUDIO 007</div>
           <h1>{session.deck.title ?? session.deck.id}</h1>
         </div>
         <div className="top-actions">
@@ -609,7 +741,7 @@ export const App: React.FC = () => {
           <button
             className="branch-button"
             disabled={!lastCommit?.inheritedDeck}
-            onClick={forkTimeline}
+            onClick={() => forkTimeline()}
             title={
               lastCommit?.inheritedDeck
                 ? "Fork a new future from this sealed checkpoint."
@@ -793,6 +925,87 @@ export const App: React.FC = () => {
                 aspectRatio: `${currentPlan.width} / ${currentPlan.height}`,
               }}
             />
+          </div>
+
+          <div className="timeline-tree-panel panel">
+            <div className="panel-heading">
+              <div>
+                <span className="panel-kicker">TIMELINE TREE</span>
+                <strong>
+                  {timelineGraph.nodes.length} nodes · {timelineGraph.edges.length} crossings
+                </strong>
+              </div>
+              <label className="timeline-import-button">
+                Merge branch sessions
+                <input
+                  type="file"
+                  multiple
+                  accept=".json,.playdeck-session.json,application/json"
+                  onChange={importTimelineSessions}
+                />
+              </label>
+            </div>
+
+            {timelineGraph.nodes.length > 0 ? (
+              <>
+                <TimelineTree
+                  graph={timelineGraph}
+                  selectedId={selectedTimelineNodeId}
+                  activeReceiptId={
+                    lastCommit?.receipt.id ??
+                    session.receipt?.id
+                  }
+                  onSelect={(node: StudioTimelineNode) =>
+                    setSelectedTimelineNodeId(node.id)
+                  }
+                />
+
+                {selectedTimelineNode ? (
+                  <div className="timeline-node-inspector">
+                    <div>
+                      <span>
+                        {selectedTimelineNode.kind.toUpperCase()}
+                      </span>
+                      <strong>
+                        {selectedTimelineNode.label}
+                      </strong>
+                    </div>
+                    {selectedTimelineNode.checkpointId ? (
+                      <div className="timeline-node-actions">
+                        <button
+                          onClick={() =>
+                            jumpTimeline(
+                              selectedTimelineNode.checkpointId!,
+                            )
+                          }
+                        >
+                          Jump here
+                        </button>
+                        <button
+                          onClick={() =>
+                            forkTimeline(
+                              selectedTimelineNode.checkpointId!,
+                            )
+                          }
+                        >
+                          Fork here
+                        </button>
+                      </div>
+                    ) : (
+                      <small>
+                        This node is visible provenance only; no portable
+                        restart checkpoint is stored here.
+                      </small>
+                    )}
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <div className="timeline-tree-empty">
+                Render + seal with “prepare next deck” to create the
+                first restartable timeline checkpoint.
+              </div>
+            )}
           </div>
 
           <div className="timeline panel">
