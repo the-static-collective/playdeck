@@ -56,13 +56,20 @@ Studio 011 now supports:
 
 The five synthetic UI fixtures under `examples/franken-studio-011/` exercise the whole packet surface.
 
-## Current visual boundary
+## Digest-bound media crossing
 
-This slice deliberately does **not** pretend a Blender receipt contains playable Blender media bytes.
+Studio 011 now supports the next layer too.
 
-A Time Slice or Memory Feedback receipt can establish that bounded derived material exists and can authorize a cartridge reference. Until its corresponding media bytes are explicitly bound into the Studio asset table, the Playdeck renderer does not display those pixels.
+A user may select actual PNG / MP4 bytes after loading the artifact packets. The browser computes SHA-256 locally and binds a file only when that digest exactly matches the `output_sha256` declared by an admitted Blender Time Slice or Memory Feedback receipt.
 
-The visible Studio 011 transformation therefore comes from deterministic Playdeck plan recomposition:
+The media then enters through already-existing Playdeck renderer layers:
+
+- Time Slice PNG → bounded `freeze` artifact layer;
+- Memory Feedback MP4 → bounded `awaken` moving layer.
+
+No digest match means no pixels enter the plan.
+
+The selected lens still produces the larger deterministic grammar through ordinary Playdeck verbs:
 
 - `drift`
 - `hinge`
@@ -73,7 +80,7 @@ The visible Studio 011 transformation therefore comes from deterministic Playdec
 - `corrupt`
 - `assemble`
 
-The Blender cartridges remain inspectable provenance and a door for the next media-binding experiment.
+The committed synthetic fixture under `examples/franken-studio-011/` contains both real media files and packet receipts declaring their exact hashes, so the full binding path can be exercised without external private media.
 
 ## Authority laws
 
@@ -105,14 +112,8 @@ The Franken proof requires:
 
 ## Next honest crossing
 
-Bind the **actual bytes** behind accepted Blender Time Slice / Memory Feedback receipts into the Studio asset table by digest, then let a renderer adapter consume those bytes only at plan events whose cartridge provenance matches.
+Generalize digest-bound media from the two Blender proof organs into a small renderer-adapter registry, then let Playdeck inspect a cartridge's declared media kind and bounded placement contract rather than hard-coding Time Slice and Memory Feedback.
 
-That would move the system from:
+That would preserve the current law while opening the same door to future accepted Blender organs:
 
-> receipt-aware cinematic composition
-
-to:
-
-> source-verified derived media composition
-
-without changing the authority model.
+> source-verified derived media composition → typed deterministic cinematic organ composition.
