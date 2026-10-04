@@ -10,6 +10,7 @@ import {ThreadLayer} from "./ThreadLayer";
 import {getActiveEvents, getCurrentGate} from "./runtime";
 import {getFrankenCinematicState} from "./frankenCinematic";
 import {FrankenAtmosphere} from "./FrankenAtmosphere";
+import {FrankenMemoryField} from "./FrankenMemoryField";
 import type {PlaydeckRenderProps} from "./types";
 
 export const PlaydeckComposition: React.FC<PlaydeckRenderProps> = ({
@@ -91,6 +92,19 @@ export const PlaydeckComposition: React.FC<PlaydeckRenderProps> = ({
             : undefined
         }
       >
+      <FrankenMemoryField
+        state={frankenCinematic}
+        cards={orderedCards.map((card) => ({
+          id: card.id,
+          source: resolveAsset(
+            card.front?.source ?? card.source,
+            assets,
+          ),
+        }))}
+        layouts={layouts}
+        time={time}
+      />
+
       <ThreadLayer
         activeEvents={activeEvents}
         layouts={layouts}
