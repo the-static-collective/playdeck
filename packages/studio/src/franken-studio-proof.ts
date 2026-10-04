@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import type {CompositionPlan, WorldRule} from "@playdeck/core";
+import {projectReceipt} from "@playdeck/receipts";
 import {
   FRANKEN_SOURCE_PINS,
   bindFrankenMediaToPlan,
@@ -265,6 +266,38 @@ assert.ok(
       event.type === "awaken" &&
       typeof event.params?.videoSource === "string",
   ),
+);
+assert.ok(
+  injected.every(
+    (event) =>
+      event.params?.externalMaterial === true &&
+      event.params?.newCardId === undefined,
+  ),
+);
+
+const projected = projectReceipt(
+  mediaPlanA,
+  "franken-proof-receipt",
+);
+const receiptFranken = projected.metadata?.studioFranken as
+  | Record<string, unknown>
+  | undefined;
+const receiptMedia = projected.metadata?.studioFrankenMedia as
+  | Record<string, unknown>
+  | undefined;
+assert.ok(receiptFranken);
+assert.ok(receiptMedia);
+assert.equal(
+  Array.isArray(receiptFranken.sourceCapsules)
+    ? receiptFranken.sourceCapsules.length
+    : 0,
+  5,
+);
+assert.equal(
+  Array.isArray(receiptMedia.bindings)
+    ? receiptMedia.bindings.length
+    : 0,
+  2,
 );
 
 assert.throws(
