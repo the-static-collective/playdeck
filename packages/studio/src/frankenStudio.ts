@@ -57,6 +57,51 @@ export type FrankenCartridge = {
   mode: string;
 };
 
+export type FrankenCinematicGrammar = {
+  cameraMode:
+    | "survey"
+    | "hinge-orbit"
+    | "pulse-dolly"
+    | "snap-frame"
+    | "wind-eye"
+    | "parallax-orbit";
+  framing:
+    | "horizon-wide"
+    | "threshold-medium"
+    | "breathing-close"
+    | "graphic-insert"
+    | "open-field"
+    | "impossible-frame";
+  topology:
+    | "terrain-bands"
+    | "corridor"
+    | "cellular-cluster"
+    | "glyph-grid"
+    | "particle-field"
+    | "nested-planes";
+  cutRhythm:
+    | "long-breath"
+    | "measured-cuts"
+    | "elastic-pulse"
+    | "syncopated-cuts"
+    | "gust-bursts"
+    | "folded-time";
+  relationMode:
+    | "parallel-drift"
+    | "axial-lock"
+    | "attraction-repulsion"
+    | "stroke-link"
+    | "swarm"
+    | "orbit-crossing";
+  memoryMode:
+    | "erosion"
+    | "room-trace"
+    | "scar-recall"
+    | "overwrite-ghost"
+    | "wake"
+    | "nested-afterimage";
+};
+
 export type FrankenProposal = {
   schema: "playdeck/franken-proposal/v0";
   id: string;
@@ -80,6 +125,7 @@ export type FrankenProposal = {
     >
   >;
   cartridges: FrankenCartridge[];
+  cinematic: FrankenCinematicGrammar;
   refused: string[];
 };
 
@@ -176,6 +222,60 @@ const WORLD_PATCHES: Record<
     surface: "stained-glass",
     transition: "room-fold",
     awakening: "portal",
+  },
+};
+
+const CINEMATIC_GRAMMARS: Record<
+  FrankenProposal["lensId"],
+  FrankenCinematicGrammar
+> = {
+  landscape: {
+    cameraMode: "survey",
+    framing: "horizon-wide",
+    topology: "terrain-bands",
+    cutRhythm: "long-breath",
+    relationMode: "parallel-drift",
+    memoryMode: "erosion",
+  },
+  architecture: {
+    cameraMode: "hinge-orbit",
+    framing: "threshold-medium",
+    topology: "corridor",
+    cutRhythm: "measured-cuts",
+    relationMode: "axial-lock",
+    memoryMode: "room-trace",
+  },
+  organism: {
+    cameraMode: "pulse-dolly",
+    framing: "breathing-close",
+    topology: "cellular-cluster",
+    cutRhythm: "elastic-pulse",
+    relationMode: "attraction-repulsion",
+    memoryMode: "scar-recall",
+  },
+  sigil: {
+    cameraMode: "snap-frame",
+    framing: "graphic-insert",
+    topology: "glyph-grid",
+    cutRhythm: "syncopated-cuts",
+    relationMode: "stroke-link",
+    memoryMode: "overwrite-ghost",
+  },
+  weather: {
+    cameraMode: "wind-eye",
+    framing: "open-field",
+    topology: "particle-field",
+    cutRhythm: "gust-bursts",
+    relationMode: "swarm",
+    memoryMode: "wake",
+  },
+  "dimensional-space": {
+    cameraMode: "parallax-orbit",
+    framing: "impossible-frame",
+    topology: "nested-planes",
+    cutRhythm: "folded-time",
+    relationMode: "orbit-crossing",
+    memoryMode: "nested-afterimage",
   },
 };
 
@@ -726,6 +826,7 @@ export const proposeFrankenFamily = (
       pressures: {...pressures},
       worldPatch: {...WORLD_PATCHES[lensId]},
       cartridges: cartridgesFor(context, lensId),
+      cinematic: {...CINEMATIC_GRAMMARS[lensId]},
       refused: [
         "Dogram measurement may not alter proposal selection.",
         "Blender evidence may enable a cartridge but may not become ancestry by itself.",
@@ -787,6 +888,7 @@ export const patchWorldForFranken = (
       proposalId: continuation.proposal.id,
       authorityClass: continuation.authorityClass,
       lensId: continuation.proposal.lensId,
+      cinematic: continuation.proposal.cinematic,
       cartridges: continuation.proposal.cartridges,
     },
   },
@@ -871,6 +973,25 @@ export const decoratePlanForFranken = (
         contrastPressure: proposal.pressures.contrast ?? 0,
         persistencePressure: proposal.pressures.persistence ?? 0,
         memoryPressure: proposal.pressures.memory ?? 0,
+        cinematic: {
+          ...proposal.cinematic,
+          shotIndex: index,
+          phase: Number(
+            (((index + proposal.slot) * 0.173) % 1).toFixed(6),
+          ),
+          framingScale: Number(
+            (0.9 + (proposal.pressures.contrast ?? 0.5) * 0.18).toFixed(6),
+          ),
+          motionAmplitude: Number(
+            (8 + (proposal.pressures.motion ?? 0.5) * 42).toFixed(6),
+          ),
+          relationStrength: Number(
+            (0.25 + (proposal.pressures.density ?? 0.5) * 0.7).toFixed(6),
+          ),
+          memoryOpacity: Number(
+            (0.08 + (proposal.pressures.memory ?? 0.5) * 0.34).toFixed(6),
+          ),
+        },
         observerCapsuleId: observer?.capsuleId,
         timeSliceCapsuleId:
           timeSlice &&
@@ -929,6 +1050,7 @@ export const decoratePlanForFranken = (
         proposalId: proposal.id,
         authorityClass: continuation.authorityClass,
         lensId: proposal.lensId,
+        cinematic: proposal.cinematic,
         cartridges: proposal.cartridges,
         evidenceCapsuleIds: continuation.evidenceCapsuleIds,
         measurementCapsuleIds: continuation.measurementCapsuleIds,
