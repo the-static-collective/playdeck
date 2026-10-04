@@ -6,6 +6,10 @@ import type {
 } from "@playdeck/core";
 
 const eventResult = (event: CompositionEvent): string | undefined => {
+  if (event.params?.externalMaterial === true) {
+    return "external-derived-media";
+  }
+
   switch (event.type) {
     case "assemble":
       return typeof event.params?.shape === "string"
