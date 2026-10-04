@@ -1,0 +1,102 @@
+{
+  "producer": {
+    "repo": "the-static-collective/the-haunted-toaster",
+    "branch": "feature/listening-eye-v0",
+    "sha": "fe185abbbfa9d56e613f953f7c92531853a80fb3"
+  },
+  "artifact": {
+    "schema": "haunted-toaster/listening-eye/v0",
+    "authority": "influence-only",
+    "analysisHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "album": {
+      "albumId": "franken-proof",
+      "trackIndex": 2,
+      "trackCount": 7
+    },
+    "summary": {
+      "meanEnergy": 0.52,
+      "dynamicRange": 0.41
+    },
+    "lenses": [
+      {
+        "id": "landscape",
+        "name": "Landscape",
+        "pressures": {
+          "motion": 0.2,
+          "density": 0.3,
+          "contrast": 0.4,
+          "persistence": 0.5,
+          "memory": 0.35,
+          "foreshadow": 0.7,
+          "arrival": 0.2
+        }
+      },
+      {
+        "id": "architecture",
+        "name": "Architecture",
+        "pressures": {
+          "motion": 0.3,
+          "density": 0.38,
+          "contrast": 0.46,
+          "persistence": 0.5,
+          "memory": 0.42,
+          "foreshadow": 0.65,
+          "arrival": 0.28
+        }
+      },
+      {
+        "id": "organism",
+        "name": "Organism",
+        "pressures": {
+          "motion": 0.4,
+          "density": 0.46,
+          "contrast": 0.52,
+          "persistence": 0.5,
+          "memory": 0.49,
+          "foreshadow": 0.6,
+          "arrival": 0.36
+        }
+      },
+      {
+        "id": "sigil",
+        "name": "Sigil / Type",
+        "pressures": {
+          "motion": 0.5,
+          "density": 0.54,
+          "contrast": 0.58,
+          "persistence": 0.5,
+          "memory": 0.56,
+          "foreshadow": 0.55,
+          "arrival": 0.44
+        }
+      },
+      {
+        "id": "weather",
+        "name": "Weather / Particles",
+        "pressures": {
+          "motion": 0.6,
+          "density": 0.62,
+          "contrast": 0.64,
+          "persistence": 0.5,
+          "memory": 0.63,
+          "foreshadow": 0.5,
+          "arrival": 0.52
+        }
+      },
+      {
+        "id": "dimensional-space",
+        "name": "Dimensional Space",
+        "pressures": {
+          "motion": 0.7,
+          "density": 0.7,
+          "contrast": 0.7,
+          "persistence": 0.5,
+          "memory": 0.7,
+          "foreshadow": 0.45,
+          "arrival": 0.6
+        }
+      }
+    ],
+    "listeningEyeSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  }
+}

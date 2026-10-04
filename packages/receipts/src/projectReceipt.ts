@@ -6,6 +6,10 @@ import type {
 } from "@playdeck/core";
 
 const eventResult = (event: CompositionEvent): string | undefined => {
+  if (event.params?.externalMaterial === true) {
+    return "external-derived-media";
+  }
+
   switch (event.type) {
     case "assemble":
       return typeof event.params?.shape === "string"
@@ -86,6 +90,12 @@ export const projectReceipt = (
     metadata: {
       projectedFrom: plan.id,
       deterministic: plan.renderHints?.deterministic ?? false,
+      ...(plan.metadata?.studioFranken !== undefined
+        ? {studioFranken: plan.metadata.studioFranken}
+        : {}),
+      ...(plan.metadata?.studioFrankenMedia !== undefined
+        ? {studioFrankenMedia: plan.metadata.studioFrankenMedia}
+        : {}),
     },
   };
 };

@@ -1,7 +1,8 @@
 import {staticFile} from "remotion";
 import type {AssetMap} from "./types";
 
-const isRemote = (value: string) => /^https?:\/\//i.test(value);
+const isDirectUri = (value: string) =>
+  /^(?:https?:\/\/|blob:|data:)/i.test(value);
 
 export const resolveAsset = (source: string, assets: AssetMap): string => {
   const resolved = source.startsWith("asset://") ? assets[source] : source;
@@ -12,7 +13,7 @@ export const resolveAsset = (source: string, assets: AssetMap): string => {
     );
   }
 
-  if (isRemote(resolved)) {
+  if (isDirectUri(resolved)) {
     return resolved;
   }
 

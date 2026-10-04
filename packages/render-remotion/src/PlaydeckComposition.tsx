@@ -8,6 +8,9 @@ import {CardLayer} from "./CardLayer";
 import {CorruptionOverlay} from "./CorruptionOverlay";
 import {ThreadLayer} from "./ThreadLayer";
 import {getActiveEvents, getCurrentGate} from "./runtime";
+import {getFrankenCinematicState} from "./frankenCinematic";
+import {FrankenAtmosphere} from "./FrankenAtmosphere";
+import {FrankenMemoryField} from "./FrankenMemoryField";
 import type {PlaydeckRenderProps} from "./types";
 
 export const PlaydeckComposition: React.FC<PlaydeckRenderProps> = ({
@@ -26,6 +29,11 @@ export const PlaydeckComposition: React.FC<PlaydeckRenderProps> = ({
   const audio = sampleEnvelope(envelope, time);
   const activeEvents = getActiveEvents(plan, time);
   const currentGate = getCurrentGate(plan, time);
+  const frankenCinematic = getFrankenCinematicState({
+    plan,
+    activeEvents,
+    time,
+  });
 
   const orderedCards = useMemo(() => {
     if (!deck.order?.length) {
@@ -67,11 +75,42 @@ export const PlaydeckComposition: React.FC<PlaydeckRenderProps> = ({
     >
       <Audio src={resolveAsset(track.source, assets)} />
 
+      <FrankenAtmosphere
+        state={frankenCinematic}
+        width={plan.width}
+        height={plan.height}
+        time={time}
+      />
+
+      <AbsoluteFill
+        style={
+          frankenCinematic
+            ? {
+                transform: `translate(${frankenCinematic.camera.x}px, ${frankenCinematic.camera.y}px) scale(${frankenCinematic.camera.scale}) rotate(${frankenCinematic.camera.rotate}deg)`,
+                transformOrigin: "50% 50%",
+              }
+            : undefined
+        }
+      >
+      <FrankenMemoryField
+        state={frankenCinematic}
+        cards={orderedCards.map((card) => ({
+          id: card.id,
+          source: resolveAsset(
+            card.front?.source ?? card.source,
+            assets,
+          ),
+        }))}
+        layouts={layouts}
+        time={time}
+      />
+
       <ThreadLayer
         activeEvents={activeEvents}
         layouts={layouts}
         width={plan.width}
         height={plan.height}
+        franken={frankenCinematic}
       />
 
       {orderedCards.map((card) => {
@@ -163,7 +202,22 @@ export const PlaydeckComposition: React.FC<PlaydeckRenderProps> = ({
           );
         })}
 
+      </AbsoluteFill>
+
       <CorruptionOverlay activeEvents={activeEvents} high={audio.high} />
+
+      {frankenCinematic && frankenCinematic.cutPulse > 0 ? (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 540,
+            pointerEvents: "none",
+            opacity: frankenCinematic.cutPulse * 0.11,
+            background: "rgba(245,238,220,.55)",
+          }}
+        />
+      ) : null}
 
       {debug ? (
         <div
@@ -190,6 +244,12 @@ export const PlaydeckComposition: React.FC<PlaydeckRenderProps> = ({
             L {audio.low.toFixed(2)} / M {audio.mid.toFixed(2)} / H{" "}
             {audio.high.toFixed(2)}
           </div>
+          {frankenCinematic ? (
+            <div>
+              {frankenCinematic.lensId} · {frankenCinematic.cameraMode} ·{" "}
+              {frankenCinematic.topology} · {frankenCinematic.cutRhythm}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </AbsoluteFill>

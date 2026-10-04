@@ -33,6 +33,18 @@ import type {
   StudioQueuedSong,
 } from "./cockpitTypes";
 import {recomposeStudioPlan} from "./recompose";
+import {
+  bindFrankenMediaToPlan,
+  compileFrankenContext,
+  decoratePlanForFranken,
+  expectedFrankenMedia,
+  keepFrankenProposal,
+  parseFrankenPacket,
+  patchWorldForFranken,
+  proposeFrankenFamily,
+  type FrankenContext,
+  type FrankenProposal,
+} from "./frankenStudio";
 import {TimelineTree} from "./TimelineTree";
 import {
   createStudioPossibilityEcology,
@@ -137,6 +149,16 @@ export const App: React.FC = () => {
     useState<string | null>(null);
   const [compareRightCheckpointId, setCompareRightCheckpointId] =
     useState<string | null>(null);
+  const [frankenContext, setFrankenContext] =
+    useState<FrankenContext | null>(null);
+  const [frankenProposals, setFrankenProposals] =
+    useState<FrankenProposal[]>([]);
+  const [selectedFrankenProposalId, setSelectedFrankenProposalId] =
+    useState<string | null>(null);
+  const [frankenMessage, setFrankenMessage] =
+    useState<string | null>(null);
+  const [frankenMediaBindings, setFrankenMediaBindings] =
+    useState<Record<string, string>>({});
   const dynamicUrls = useRef<string[]>([]);
 
   useEffect(
@@ -289,6 +311,11 @@ export const App: React.FC = () => {
       setSelectedTimelineNodeId(null);
       setCompareLeftCheckpointId(null);
       setCompareRightCheckpointId(null);
+      setFrankenContext(null);
+      setFrankenProposals([]);
+      setSelectedFrankenProposalId(null);
+      setFrankenMessage(null);
+      setFrankenMediaBindings({});
       setLastCommit(null);
       setDirty(false);
     } catch (reason) {
@@ -375,6 +402,11 @@ export const App: React.FC = () => {
     );
     setCompareLeftCheckpointId(null);
     setCompareRightCheckpointId(null);
+    setFrankenContext(null);
+    setFrankenProposals([]);
+    setSelectedFrankenProposalId(null);
+    setFrankenMessage(null);
+    setFrankenMediaBindings({});
     setInheritAfterRender(
       archive.preferences.inheritAfterRender,
     );
@@ -794,6 +826,256 @@ export const App: React.FC = () => {
     }
   };
 
+  const clearFrankenMedia = () => {
+    const logicals = new Set(Object.values(frankenMediaBindings));
+    const storedMedia = session?.plan.metadata?.studioFrankenMedia;
+    if (
+      storedMedia &&
+      typeof storedMedia === "object" &&
+      !Array.isArray(storedMedia)
+    ) {
+      const bindings = (storedMedia as {
+        bindings?: Array<{source?: unknown}>;
+      }).bindings;
+      for (const binding of bindings ?? []) {
+        if (typeof binding.source === "string") {
+          logicals.add(binding.source);
+        }
+      }
+    }
+
+    for (const logical of logicals) {
+      const url = runtimeAssetUrls[logical];
+      if (url) URL.revokeObjectURL(url);
+    }
+    setRuntimeAssets((current) =>
+      Object.fromEntries(
+        Object.entries(current).filter(
+          ([logical]) => !logicals.has(logical),
+        ),
+      ),
+    );
+    setRuntimeAssetUrls((current) =>
+      Object.fromEntries(
+        Object.entries(current).filter(
+          ([logical]) => !logicals.has(logical),
+        ),
+      ),
+    );
+    setFrankenMediaBindings({});
+
+    if (logicals.size > 0) {
+      setSession((current) =>
+        current
+          ? {
+              ...current,
+              plan: bindFrankenMediaToPlan(current.plan, {}),
+              receipt: undefined,
+            }
+          : current,
+      );
+      setLastCommit(null);
+      setDirty(true);
+    }
+  };
+
+  const sha256File = async (file: File): Promise<string> => {
+    const digest = await crypto.subtle.digest(
+      "SHA-256",
+      await file.arrayBuffer(),
+    );
+    return Array.from(new Uint8Array(digest))
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
+  };
+
+  const loadFrankenPackets = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) return;
+
+    try {
+      setError(null);
+      const packets = await Promise.all(
+        files.map(async (file) =>
+          parseFrankenPacket(await file.text()),
+        ),
+      );
+      const context = compileFrankenContext(packets);
+      const proposals = proposeFrankenFamily(context);
+      clearFrankenMedia();
+      setFrankenContext(context);
+      setFrankenProposals(proposals);
+      setSelectedFrankenProposalId(proposals[0]?.id ?? null);
+      setFrankenMessage(
+        `${context.influences.length} influence · ${context.evidence.length} evidence · ${context.measurements.length} measurement packets admitted.`,
+      );
+      event.target.value = "";
+    } catch (reason) {
+      setFrankenContext(null);
+      setFrankenProposals([]);
+      setSelectedFrankenProposalId(null);
+      setFrankenMessage(null);
+      setError(
+        reason instanceof Error ? reason.message : String(reason),
+      );
+    }
+  };
+
+  const bindFrankenMedia = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = Array.from(event.target.files ?? []);
+    if (!frankenContext || files.length === 0) return;
+
+    try {
+      setError(null);
+      const expectations = expectedFrankenMedia(frankenContext);
+      const nextBindings = {...frankenMediaBindings};
+      const nextAssets: Record<string, StudioAssetPayload> = {};
+      const nextUrls: Record<string, string> = {};
+
+      for (const file of files) {
+        const digest = await sha256File(file);
+        const expected = expectations.find(
+          (item) => item.sha256 === digest,
+        );
+        if (!expected) {
+          throw new Error(
+            `No admitted Blender receipt expects media SHA-256 ${digest} (${file.name}).`,
+          );
+        }
+
+        const logical = `asset://franken/${expected.capsuleId}`;
+        const priorLogical = nextBindings[expected.capsuleId];
+        if (priorLogical) {
+          const priorUrl = runtimeAssetUrls[priorLogical];
+          if (priorUrl) URL.revokeObjectURL(priorUrl);
+        }
+
+        const payload = await fileToPayload(file);
+        const url = assetPayloadToObjectUrl(payload);
+        dynamicUrls.current.push(url);
+        nextBindings[expected.capsuleId] = logical;
+        nextAssets[logical] = payload;
+        nextUrls[logical] = url;
+      }
+
+      setRuntimeAssets((current) => ({
+        ...current,
+        ...nextAssets,
+      }));
+      setRuntimeAssetUrls((current) => ({
+        ...current,
+        ...nextUrls,
+      }));
+      setFrankenMediaBindings(nextBindings);
+      setSession((current) =>
+        current
+          ? {
+              ...current,
+              plan: bindFrankenMediaToPlan(
+                current.plan,
+                nextBindings,
+              ),
+              receipt: undefined,
+            }
+          : current,
+      );
+      setDirty(true);
+      setLastCommit(null);
+      setFrankenMessage(
+        `${Object.keys(nextBindings).length} Blender media artifact(s) digest-verified and bound locally.`,
+      );
+      event.target.value = "";
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : String(reason),
+      );
+      event.target.value = "";
+    }
+  };
+
+  const keepFranken = () => {
+    if (
+      !session ||
+      !frankenContext ||
+      !selectedFrankenProposalId
+    ) {
+      return;
+    }
+
+    try {
+      setError(null);
+      const continuation = keepFrankenProposal(
+        frankenContext,
+        selectedFrankenProposalId,
+      );
+      const worldRule = patchWorldForFranken(
+        session.worldRule,
+        continuation,
+      );
+      const deck: DeckSpec = {
+        ...session.deck,
+        metadata: {
+          ...(session.deck.metadata ?? {}),
+          studioFrankenKeep: {
+            schema: "playdeck/franken-keep-marker/v0",
+            continuationId: continuation.id,
+            proposalId: continuation.proposal.id,
+            lensId: continuation.proposal.lensId,
+            authorityClass: continuation.authorityClass,
+            contextId: continuation.contextId,
+          },
+        },
+      };
+      const recomposed = recomposeStudioPlan({
+        deck,
+        track: session.track,
+        worldRule,
+        priorPlan: session.plan,
+      });
+      const plan = bindFrankenMediaToPlan(
+        decoratePlanForFranken(
+          recomposed,
+          continuation,
+        ),
+        frankenMediaBindings,
+      );
+
+      setSession((current) =>
+        current
+          ? {
+              ...current,
+              deck,
+              worldRule,
+              plan,
+              receipt: undefined,
+            }
+          : current,
+      );
+      setDirty(true);
+      setLastCommit(null);
+      setFrankenMessage(
+        `KEEP ${continuation.proposal.label} → local recomposition. Render + seal is still required for history.`,
+      );
+      player.current?.seekTo(0);
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : String(reason),
+      );
+    }
+  };
+
+  const clearFranken = () => {
+    clearFrankenMedia();
+    setFrankenContext(null);
+    setFrankenProposals([]);
+    setSelectedFrankenProposalId(null);
+    setFrankenMessage(null);
+  };
+
   const updateSelected = (
     patch: Partial<CardSpec>,
   ) => {
@@ -842,7 +1124,7 @@ export const App: React.FC = () => {
     return (
       <main className="landing">
         <section className="landing-card">
-          <div className="eyebrow">PLAYDECK / STUDIO 010</div>
+          <div className="eyebrow">PLAYDECK / STUDIO 011</div>
           <h1>Open the room.</h1>
           <p>
             Load any PlayDeck output bundle. Studio reconstructs its
@@ -889,7 +1171,7 @@ export const App: React.FC = () => {
     <main className="studio-shell">
       <header className="topbar">
         <div>
-          <div className="eyebrow">PLAYDECK / STUDIO 010</div>
+          <div className="eyebrow">PLAYDECK / STUDIO 011</div>
           <h1>{session.deck.title ?? session.deck.id}</h1>
         </div>
         <div className="top-actions">
@@ -1554,6 +1836,187 @@ export const App: React.FC = () => {
                 />
               </label>
             ))}
+          </div>
+
+          <div className="franken-studio-panel">
+            <div className="panel-heading">
+              <div>
+                <span className="panel-kicker">FRANKEN / STUDIO 011</span>
+                <strong>
+                  {frankenContext
+                    ? `${frankenProposals.length} deterministic futures`
+                    : "artifact crossing"}
+                </strong>
+              </div>
+              {frankenContext ? (
+                <button
+                  className="franken-clear"
+                  onClick={clearFranken}
+                >
+                  clear
+                </button>
+              ) : null}
+            </div>
+
+            <label className="franken-load">
+              Load artifact packets
+              <input
+                type="file"
+                multiple
+                accept=".json,application/json"
+                onChange={loadFrankenPackets}
+              />
+            </label>
+
+            {frankenContext ? (
+              <>
+                <div className="franken-authority-grid">
+                  <div>
+                    <span>INFLUENCE</span>
+                    <strong>{frankenContext.influences.length}</strong>
+                  </div>
+                  <div>
+                    <span>EVIDENCE</span>
+                    <strong>{frankenContext.evidence.length}</strong>
+                  </div>
+                  <div>
+                    <span>MEASURE</span>
+                    <strong>{frankenContext.measurements.length}</strong>
+                  </div>
+                </div>
+
+                <div className="franken-source-list">
+                  {[
+                    ...frankenContext.influences,
+                    ...frankenContext.evidence,
+                    ...frankenContext.measurements,
+                  ].map((capsule) => (
+                    <div key={capsule.id}>
+                      <span>{capsule.authorityClass}</span>
+                      <strong>{capsule.role}</strong>
+                      <small>{capsule.sourceSchema}</small>
+                    </div>
+                  ))}
+                </div>
+
+                {expectedFrankenMedia(frankenContext).length > 0 ? (
+                  <div className="franken-media-bind">
+                    <div>
+                      <span>VERIFIED BLENDER MEDIA</span>
+                      <strong>
+                        {Object.keys(frankenMediaBindings).length} /{" "}
+                        {expectedFrankenMedia(frankenContext).length} bound
+                      </strong>
+                    </div>
+                    <label>
+                      Bind PNG / MP4 by SHA-256
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/png,video/mp4,.png,.mp4"
+                        onChange={bindFrankenMedia}
+                      />
+                    </label>
+                  </div>
+                ) : null}
+
+                <div className="franken-proposal-grid">
+                  {frankenProposals.map((proposal) => (
+                    <button
+                      key={proposal.id}
+                      className={
+                        selectedFrankenProposalId === proposal.id
+                          ? "franken-proposal selected"
+                          : "franken-proposal"
+                      }
+                      onClick={() =>
+                        setSelectedFrankenProposalId(proposal.id)
+                      }
+                    >
+                      <span>{String(proposal.slot).padStart(2, "0")}</span>
+                      <strong>{proposal.label}</strong>
+                      <small>
+                        {proposal.cinematic.cameraMode} ·{" "}
+                        {proposal.cinematic.topology}
+                      </small>
+                    </button>
+                  ))}
+                </div>
+
+                {(() => {
+                  const proposal = frankenProposals.find(
+                    (candidate) =>
+                      candidate.id === selectedFrankenProposalId,
+                  );
+                  if (!proposal) return null;
+                  return (
+                    <div className="franken-selection">
+                      <div>
+                        <span>SELECTED PROPOSAL</span>
+                        <strong>{proposal.label}</strong>
+                        <small>{proposal.invitation}</small>
+                      </div>
+                      <code>
+                        {JSON.stringify(proposal.worldPatch)}
+                      </code>
+                      <div className="franken-cinematic-grid">
+                        <div>
+                          <span>CAMERA</span>
+                          <strong>{proposal.cinematic.cameraMode}</strong>
+                        </div>
+                        <div>
+                          <span>FRAME</span>
+                          <strong>{proposal.cinematic.framing}</strong>
+                        </div>
+                        <div>
+                          <span>TOPOLOGY</span>
+                          <strong>{proposal.cinematic.topology}</strong>
+                        </div>
+                        <div>
+                          <span>CUT RHYTHM</span>
+                          <strong>{proposal.cinematic.cutRhythm}</strong>
+                        </div>
+                        <div>
+                          <span>RELATION</span>
+                          <strong>{proposal.cinematic.relationMode}</strong>
+                        </div>
+                        <div>
+                          <span>MEMORY</span>
+                          <strong>{proposal.cinematic.memoryMode}</strong>
+                        </div>
+                      </div>
+                      <div className="franken-cartridges">
+                        {proposal.cartridges.map((cartridge) => (
+                          <span key={cartridge.capsuleId}>
+                            {cartridge.role} / {cartridge.mode}
+                          </span>
+                        ))}
+                      </div>
+                      <button
+                        className="franken-keep"
+                        onClick={keepFranken}
+                      >
+                        KEEP → recompose locally
+                      </button>
+                    </div>
+                  );
+                })()}
+              </>
+            ) : (
+              <div className="franken-empty">
+                Packet format: {"{ producer, artifact }"}. Listening Eye is
+                required; Blender and Dogram packets are optional and remain
+                authority-separated.
+              </div>
+            )}
+
+            {frankenMessage ? (
+              <div className="franken-message">{frankenMessage}</div>
+            ) : null}
+
+            <div className="franken-law">
+              INFLUENCE ≠ EVIDENCE · MEASUREMENT ≠ GRADE · KEEP ≠ RECEIPT
+            </div>
           </div>
 
           <div className="panel-heading secondary-heading">

@@ -1,0 +1,29 @@
+name: Franken Smoke
+
+on:
+  pull_request:
+    paths:
+      - "packages/studio/**"
+      - "packages/awakening/**"
+      - "packages/receipts/**"
+      - "packages/render-remotion/**"
+      - "examples/franken-studio-011/**"
+      - "experiments/franken-smash-001/**"
+      - ".github/workflows/franken-smoke.yml"
+  workflow_dispatch:
+
+jobs:
+  franken:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: npm install
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Prove Franken Studio 011 and build cockpit
+        run: npm --workspace @playdeck/studio run franken:proof

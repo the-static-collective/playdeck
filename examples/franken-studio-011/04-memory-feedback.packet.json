@@ -1,0 +1,26 @@
+{
+  "producer": {
+    "repo": "the-static-collective/the-haunted-blender",
+    "branch": "experimental/memory-feedback-001",
+    "sha": "6aca64fdeeb458653e20558c4b23fa89ec622ba7"
+  },
+  "artifact": {
+    "schema": "haunted-blender/memory-feedback-receipt/v0",
+    "status": "scoped_complete",
+    "observer_id": "eye-a",
+    "world_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "residue_fact_ids": [
+      "figure"
+    ],
+    "memory_statistics": {
+      "figure": {
+        "captured_frames": 5,
+        "residue_frames": 8,
+        "max_residue_age": 8,
+        "last_strength_percent": 25
+      }
+    },
+    "output_sha256": "6882b586dc5eaf62bfb8dd279d6b2ec5cd816ec67ec94898a34e8c845b206c9a",
+    "distribution_authorized": false
+  }
+}

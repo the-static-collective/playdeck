@@ -9,6 +9,7 @@ import {basename, extname, join, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {runPreparedPlaydeck} from "@playdeck/cli";
 import {applyReceiptToDeck} from "@playdeck/continuity";
+import type {CompositionPlan} from "@playdeck/core";
 import type {
   StudioAssetPayload,
   StudioCommitPayload,
@@ -39,6 +40,113 @@ const mimeFor = (path: string): string => {
       return "audio/mpeg";
     default:
       return "application/octet-stream";
+  }
+};
+
+const record = (value: unknown): Record<string, unknown> | undefined =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+
+export const assertFrankenMediaBindings = (
+  plan: CompositionPlan,
+  assets: Record<string, StudioAssetPayload>,
+): void => {
+  const media = record(plan.metadata?.studioFrankenMedia);
+  if (!media) return;
+
+  const bindings = media.bindings;
+  if (!Array.isArray(bindings)) {
+    throw new Error("Franken media metadata requires a bindings array.");
+  }
+
+  const franken = record(plan.metadata?.studioFranken);
+  const sourceCapsules = franken?.sourceCapsules;
+  if (!Array.isArray(sourceCapsules)) {
+    throw new Error(
+      "Franken media binding requires source capsule provenance.",
+    );
+  }
+
+  const expected = new Map<string, string>();
+  for (const rawCapsule of sourceCapsules) {
+    const capsule = record(rawCapsule);
+    const summary = record(capsule?.summary);
+    const id = capsule?.id;
+    const role = capsule?.role;
+    const authorityClass = capsule?.authorityClass;
+    const digest = summary?.outputSha256;
+
+    if (
+      typeof id === "string" &&
+      (role === "time-slice-material" ||
+        role === "memory-feedback-material") &&
+      authorityClass === "evidence" &&
+      typeof digest === "string"
+    ) {
+      expected.set(id, digest);
+    }
+  }
+
+  const boundByCapsule = new Map<string, string>();
+  for (const rawBinding of bindings) {
+    const binding = record(rawBinding);
+    const capsuleId = binding?.capsuleId;
+    const source = binding?.source;
+    if (
+      typeof capsuleId !== "string" ||
+      typeof source !== "string"
+    ) {
+      throw new Error("Malformed Franken media binding.");
+    }
+    if (boundByCapsule.has(capsuleId)) {
+      throw new Error(
+        `Duplicate Franken media binding for "${capsuleId}".`,
+      );
+    }
+
+    const expectedDigest = expected.get(capsuleId);
+    if (!expectedDigest) {
+      throw new Error(
+        `Franken media binding "${capsuleId}" lacks admitted evidence provenance.`,
+      );
+    }
+
+    const asset = assets[source];
+    if (!asset) {
+      throw new Error(
+        `Franken media binding "${capsuleId}" is missing asset "${source}".`,
+      );
+    }
+    const actualDigest = createHash("sha256")
+      .update(Buffer.from(asset.base64, "base64"))
+      .digest("hex");
+    if (actualDigest !== expectedDigest) {
+      throw new Error(
+        `Franken media SHA-256 mismatch for "${capsuleId}".`,
+      );
+    }
+    boundByCapsule.set(capsuleId, source);
+  }
+
+  for (const event of plan.events) {
+    if (event.params?.externalMaterial !== true) continue;
+    const capsuleId = event.params?.frankenCapsuleId;
+    const source =
+      typeof event.params?.videoSource === "string"
+        ? event.params.videoSource
+        : typeof event.params?.freezeSource === "string"
+          ? event.params.freezeSource
+          : undefined;
+    if (
+      typeof capsuleId !== "string" ||
+      !source ||
+      boundByCapsule.get(capsuleId) !== source
+    ) {
+      throw new Error(
+        `External derived-media event "${event.id}" is not backed by its verified Franken binding.`,
+      );
+    }
   }
 };
 
@@ -101,6 +209,7 @@ export const commitStudioPayload = async (
     scratchRoot?: string;
   } = {},
 ): Promise<StudioCommitResult> => {
+  assertFrankenMediaBindings(payload.plan, payload.assets);
   const hash = payloadHash(payload);
   const id = `${payload.deck.id}-studio-${hash}`;
   const outputRoot = resolve(
