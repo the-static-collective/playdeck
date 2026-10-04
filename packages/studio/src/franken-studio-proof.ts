@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import {createHash} from "node:crypto";
 import type {CompositionPlan, WorldRule} from "@playdeck/core";
 import {projectReceipt} from "@playdeck/receipts";
 import {
@@ -11,6 +12,22 @@ import {
   patchWorldForFranken,
   proposeFrankenFamily,
 } from "./frankenStudio";
+import {assertFrankenMediaBindings} from "./commitServer";
+
+const proofTimeAsset = {
+  name: "time-slice.png",
+  mime: "image/png",
+  base64: Buffer.from("proof-time-slice-bytes").toString("base64"),
+};
+const proofMemoryAsset = {
+  name: "memory-feedback.mp4",
+  mime: "video/mp4",
+  base64: Buffer.from("proof-memory-feedback-bytes").toString("base64"),
+};
+const assetSha256 = (asset: {base64: string}) =>
+  createHash("sha256")
+    .update(Buffer.from(asset.base64, "base64"))
+    .digest("hex");
 
 const listeningEye = {
   schema: "haunted-toaster/listening-eye/v0",
@@ -49,7 +66,7 @@ const timeSlice = {
   strips: Array.from({length: 32}, (_, index) => ({
     sample_index: index,
   })),
-  output_sha256: "d".repeat(64),
+  output_sha256: assetSha256(proofTimeAsset),
   distribution_authorized: false,
 };
 
@@ -75,7 +92,7 @@ const memoryFeedback = {
   memory_statistics: {
     figure: {captured_frames: 5, residue_frames: 8},
   },
-  output_sha256: "1".repeat(64),
+  output_sha256: assetSha256(proofMemoryAsset),
   distribution_authorized: false,
 };
 
@@ -249,6 +266,30 @@ const mediaPlanB = bindFrankenMediaToPlan(
   mediaBindings,
 );
 assert.deepEqual(mediaPlanA, mediaPlanB);
+
+const proofAssets = Object.fromEntries(
+  expectedMedia.map((item) => [
+    mediaBindings[item.capsuleId],
+    item.role === "time-slice-material"
+      ? proofTimeAsset
+      : proofMemoryAsset,
+  ]),
+);
+assert.doesNotThrow(() =>
+  assertFrankenMediaBindings(mediaPlanA, proofAssets),
+);
+const firstLogical = mediaBindings[expectedMedia[0].capsuleId];
+assert.throws(
+  () =>
+    assertFrankenMediaBindings(mediaPlanA, {
+      ...proofAssets,
+      [firstLogical]: {
+        ...proofAssets[firstLogical],
+        base64: Buffer.from("tampered-bytes").toString("base64"),
+      },
+    }),
+  /SHA-256 mismatch/,
+);
 const injected = mediaPlanA.events.filter(
   (event) => event.params?.frankenMediaAdapter === true,
 );
