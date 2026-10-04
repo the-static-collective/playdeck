@@ -1373,3 +1373,42 @@ button {
   color: #686d79;
   letter-spacing: 0.04em;
 }
+
+.franken-source-list {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 9px;
+}
+
+.franken-source-list > div {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  gap: 2px 7px;
+  padding: 6px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.045);
+  background: rgba(8, 10, 16, 0.52);
+}
+
+.franken-source-list span {
+  grid-row: 1 / 3;
+  align-self: center;
+  color: #7d8994;
+  font-size: 7px;
+  letter-spacing: 0.06em;
+  overflow-wrap: anywhere;
+}
+
+.franken-source-list strong {
+  color: #c9c8d0;
+  font-size: 8px;
+}
+
+.franken-source-list small {
+  min-width: 0;
+  color: #6f6d78;
+  font-size: 7px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
