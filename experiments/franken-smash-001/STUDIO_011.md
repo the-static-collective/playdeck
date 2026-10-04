@@ -109,12 +109,14 @@ The Franken proof requires:
 
 1. deterministic packet compilation;
 2. six stable unique lenses;
-3. correct Blender cartridge gating;
-4. Dogram exclusion from creative cartridges and plan content;
-5. KEEP → continuation permission;
-6. visible deterministic event rewrites;
-7. source-pin refusal;
-8. authority-escalation refusal.
+3. six distinct camera / topology / cut / relation / memory grammars;
+4. correct Blender cartridge gating;
+5. Dogram exclusion from creative cartridges and plan content;
+6. KEEP → continuation permission;
+7. visible deterministic event rewrites;
+8. digest-verified external Blender media injection;
+9. source-pin refusal;
+10. authority-escalation refusal.
 
 ## Next honest crossing
 
@@ -137,7 +139,7 @@ Studio 011 now treats each Listening Eye future as a distinct deterministic dire
 | Weather / Particles | wind-eye | particle-field | gust-bursts | swarm | wake |
 | Dimensional Space | parallax-orbit | nested-planes | folded-time | orbit-crossing | nested-afterimage |
 
-These fields are carried in the proposal, KEEP continuation, world metadata, plan metadata, and per-event Franken guidance. The Remotion renderer interprets them through deterministic camera movement, card topology, atmosphere, relation paths, and cut pulses.
+These fields are carried in the proposal, KEEP continuation, world metadata, plan metadata, and per-event Franken guidance. The Remotion renderer interprets them through deterministic camera movement, card topology, atmosphere, relation paths, cut pulses, and bounded memory echoes/traces/wakes.
 
 The grammar is still presentation/composition behavior. It does not change source facts, evidence authority, or receipt authority.
 
