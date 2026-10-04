@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
+import {readFileSync} from "node:fs";
+import {fileURLToPath} from "node:url";
 import type {CompositionPlan, WorldRule} from "@playdeck/core";
 import {projectReceipt} from "@playdeck/receipts";
 import {
@@ -13,6 +15,34 @@ import {
   proposeFrankenFamily,
 } from "./frankenStudio";
 import {assertFrankenMediaBindings} from "./commitServer";
+
+const fixtureRoot = fileURLToPath(
+  new URL("../../../examples/franken-studio-011/", import.meta.url),
+);
+const fixtureDigest = (name: string) =>
+  createHash("sha256")
+    .update(readFileSync(`${fixtureRoot}/${name}`))
+    .digest("hex");
+const fixtureTimePacket = JSON.parse(
+  readFileSync(
+    `${fixtureRoot}/03-time-slice.packet.json`,
+    "utf8",
+  ),
+) as {artifact: {output_sha256: string}};
+const fixtureMemoryPacket = JSON.parse(
+  readFileSync(
+    `${fixtureRoot}/04-memory-feedback.packet.json`,
+    "utf8",
+  ),
+) as {artifact: {output_sha256: string}};
+assert.equal(
+  fixtureDigest("franken-time-slice.png"),
+  fixtureTimePacket.artifact.output_sha256,
+);
+assert.equal(
+  fixtureDigest("franken-memory-feedback.mp4"),
+  fixtureMemoryPacket.artifact.output_sha256,
+);
 
 const proofTimeAsset = {
   name: "time-slice.png",
