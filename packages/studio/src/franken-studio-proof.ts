@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import type {CompositionPlan, WorldRule} from "@playdeck/core";
 import {
   FRANKEN_SOURCE_PINS,
+  bindFrankenMediaToPlan,
   compileFrankenContext,
   decoratePlanForFranken,
+  expectedFrankenMedia,
   keepFrankenProposal,
   patchWorldForFranken,
   proposeFrankenFamily,
@@ -226,6 +228,42 @@ assert.equal(
 assert.ok(
   !JSON.stringify(decoratedA).includes(
     "MEASURED_RESPONSE_CHANGE",
+  ),
+);
+
+const expectedMedia = expectedFrankenMedia(first);
+assert.equal(expectedMedia.length, 2);
+const mediaBindings = Object.fromEntries(
+  expectedMedia.map((item) => [
+    item.capsuleId,
+    `asset://franken/${item.capsuleId}`,
+  ]),
+);
+const mediaPlanA = bindFrankenMediaToPlan(
+  decoratedA,
+  mediaBindings,
+);
+const mediaPlanB = bindFrankenMediaToPlan(
+  decoratedA,
+  mediaBindings,
+);
+assert.deepEqual(mediaPlanA, mediaPlanB);
+const injected = mediaPlanA.events.filter(
+  (event) => event.params?.frankenMediaAdapter === true,
+);
+assert.equal(injected.length, 2);
+assert.ok(
+  injected.some(
+    (event) =>
+      event.type === "freeze" &&
+      typeof event.params?.freezeSource === "string",
+  ),
+);
+assert.ok(
+  injected.some(
+    (event) =>
+      event.type === "awaken" &&
+      typeof event.params?.videoSource === "string",
   ),
 );
 
