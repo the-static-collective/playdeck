@@ -86,6 +86,12 @@ export const projectReceipt = (
     metadata: {
       projectedFrom: plan.id,
       deterministic: plan.renderHints?.deterministic ?? false,
+      ...(plan.metadata?.studioFranken !== undefined
+        ? {studioFranken: plan.metadata.studioFranken}
+        : {}),
+      ...(plan.metadata?.studioFrankenMedia !== undefined
+        ? {studioFrankenMedia: plan.metadata.studioFrankenMedia}
+        : {}),
     },
   };
 };
