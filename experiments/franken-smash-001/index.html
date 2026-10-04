@@ -698,7 +698,7 @@ function setDisposition(next) {
   if (next === "KEEP") {
     ui.authorityBadge.textContent = "CONTINUATION PERMISSION"; ui.authorityBadge.className = "authority keep";
   } else if (next === "WITNESS") {
-    ui.authorityBadge.textContent = "RESOLVED EXECUTION"; ui.authorityBadge.className = "authority witness";
+    ui.authorityBadge.textContent = "RESOLVED PREVIEW EXECUTION"; ui.authorityBadge.className = "authority witness";
   }
   const receipt = makeReceipt({seed: inputs().seed, generation, candidate: selectedCandidate(), plan: currentPlan(), disposition, overrides});
   ui.digestBadge.textContent = receipt.digest;
