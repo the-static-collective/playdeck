@@ -1,6 +1,7 @@
 import type {CardSpec, CompositionPlan, DeckSpec} from "@playdeck/core";
 import type {ActiveEvent} from "./runtime";
 import {eventTargetsCard} from "./runtime";
+import {getFrankenCinematicState} from "./frankenCinematic";
 
 export type CardLayout = {
   x: number;
@@ -78,6 +79,77 @@ export const computeCardLayout = ({
     15 * Math.cos(time * 0.29 + cardIndex * 0.71) * (0.15 + audio.high);
   x += wobbleX;
   y += wobbleY;
+
+  const franken = getFrankenCinematicState({
+    plan,
+    activeEvents,
+    time,
+  });
+
+  if (franken) {
+    const centerX = plan.width / 2;
+    const centerY = plan.height / 2;
+    const count = Math.max(1, deck.cards.length);
+    const normalizedIndex = count <= 1 ? 0.5 : cardIndex / (count - 1);
+
+    switch (franken.topology) {
+      case "terrain-bands":
+        x += Math.sin(time * 0.18 + cardIndex * 0.82) * franken.motionAmplitude * 0.18;
+        y += (row - (rows - 1) / 2) * plan.height * 0.035;
+        rotate *= 0.42;
+        break;
+      case "corridor": {
+        const side = normalizedIndex * 2 - 1;
+        const depth = 1 - Math.abs(side) * 0.26;
+        x = mix(x, centerX + side * plan.width * 0.31 - width / 2, 0.38);
+        y = mix(y, centerY - height / 2 + Math.abs(side) * 32, 0.32);
+        scale *= depth;
+        rotate += side * 2.2;
+        zIndex += Math.round(depth * 20);
+        break;
+      }
+      case "cellular-cluster": {
+        const angle =
+          (cardIndex / count) * Math.PI * 2 + time * 0.11 + franken.phase * Math.PI;
+        const radius =
+          Math.min(plan.width, plan.height) *
+          (0.11 + 0.05 * franken.relationStrength);
+        x = mix(x, centerX + Math.cos(angle) * radius - width / 2, 0.54);
+        y = mix(y, centerY + Math.sin(angle) * radius - height / 2, 0.54);
+        scale *= 0.92 + 0.08 * Math.sin(time * 1.1 + cardIndex);
+        break;
+      }
+      case "glyph-grid": {
+        const snap = Math.max(18, Math.round(plan.width / 28));
+        x = Math.round(x / snap) * snap;
+        y = Math.round(y / snap) * snap;
+        rotate += (cardIndex % 3 - 1) * 3.4;
+        scale *= cardIndex % 2 === 0 ? 0.9 : 1.04;
+        break;
+      }
+      case "particle-field":
+        x +=
+          Math.sin(time * (0.72 + cardIndex * 0.025) + cardIndex * 1.9) *
+          franken.motionAmplitude *
+          0.52;
+        y +=
+          Math.cos(time * (0.51 + cardIndex * 0.018) + cardIndex * 0.73) *
+          franken.motionAmplitude *
+          0.34;
+        rotate += Math.sin(time * 0.4 + cardIndex) * 2.4;
+        break;
+      case "nested-planes": {
+        const depth = normalizedIndex;
+        const offset = (depth - 0.5) * 92;
+        x = mix(x, centerX - width / 2 + offset, 0.58);
+        y = mix(y, centerY - height / 2 - offset * 0.42, 0.58);
+        scale *= 0.72 + depth * 0.36;
+        rotate += (depth - 0.5) * 8;
+        zIndex += Math.round(depth * 80);
+        break;
+      }
+    }
+  }
 
   const residue = activeEvents.find((event) => event.type === "residue");
   if (residue && !eventTargetsCard(residue, card.id)) {
