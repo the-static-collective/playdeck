@@ -252,7 +252,7 @@ assert.deepEqual(mediaPlanA, mediaPlanB);
 const injected = mediaPlanA.events.filter(
   (event) => event.params?.frankenMediaAdapter === true,
 );
-assert.equal(injected.length, 2);
+assert.equal(injected.length, 3);
 assert.ok(
   injected.some(
     (event) =>
@@ -298,6 +298,12 @@ assert.equal(
     ? receiptMedia.bindings.length
     : 0,
   2,
+);
+assert.equal(
+  Array.isArray(receiptMedia.injectedEventIds)
+    ? receiptMedia.injectedEventIds.length
+    : 0,
+  3,
 );
 
 assert.throws(
