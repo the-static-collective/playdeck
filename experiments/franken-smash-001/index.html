@@ -1,0 +1,737 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Franken Smash 001 — deterministic layered composition editor experiment." />
+  <title>FRANKEN SMASH 001</title>
+  <style>
+:root {
+  color-scheme: dark;
+  --bg: #08090d;
+  --panel: rgba(18, 20, 28, .92);
+  --panel-2: rgba(25, 29, 39, .88);
+  --ink: #f5f3ed;
+  --muted: #9da4b8;
+  --line: #34394a;
+  --hot: #ff4ca7;
+  --cyan: #58e5ff;
+  --lime: #c8ff62;
+  --amber: #ffcf5c;
+  --violet: #b59cff;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: radial-gradient(circle at 72% -20%, #1a1630 0, transparent 38%), var(--bg); color: var(--ink); font: 14px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+button, input, select { font: inherit; }
+button { border: 1px solid var(--line); color: var(--ink); background: #1d2130; border-radius: 8px; padding: 9px 12px; cursor: pointer; }
+button:hover { border-color: var(--cyan); }
+button.primary { background: linear-gradient(135deg, #68234b, #33225f); border-color: var(--hot); }
+button.ghost { background: transparent; }
+.shell { max-width: 1640px; margin: auto; padding: 22px; }
+.topbar { display: flex; justify-content: space-between; gap: 24px; align-items: flex-end; margin-bottom: 14px; }
+.eyebrow, .kicker { color: var(--cyan); letter-spacing: .13em; font-size: 11px; text-transform: uppercase; }
+h1 { margin: 3px 0 4px; font-size: clamp(30px, 4vw, 58px); letter-spacing: -.05em; line-height: .95; }
+h2 { margin: 3px 0 0; font-size: 16px; }
+.lede { max-width: 820px; margin: 8px 0 0; color: var(--muted); }
+.status-stack { display: grid; justify-items: end; gap: 7px; }
+.authority { padding: 7px 10px; border: 1px solid; border-radius: 999px; font-weight: 800; letter-spacing: .08em; font-size: 11px; }
+.authority.proposal { color: var(--cyan); border-color: var(--cyan); }
+.authority.keep { color: var(--amber); border-color: var(--amber); }
+.authority.witness { color: var(--lime); border-color: var(--lime); }
+.digest { color: var(--muted); font-size: 11px; }
+.panel { border: 1px solid var(--line); border-radius: 12px; background: linear-gradient(180deg, rgba(255,255,255,.018), rgba(255,255,255,0)), var(--panel); box-shadow: 0 14px 40px rgba(0,0,0,.2); }
+.control-rack { display: grid; grid-template-columns: 1.1fr 1fr repeat(5, minmax(120px, .7fr)) auto; gap: 10px; padding: 12px; align-items: end; margin-bottom: 14px; }
+.control-rack label { color: var(--muted); font-size: 11px; display: grid; gap: 5px; }
+.control-rack input:not([type=range]), .control-rack select { width: 100%; color: var(--ink); background: #0f1118; border: 1px solid var(--line); padding: 8px; border-radius: 7px; }
+.control-rack input[type=range] { accent-color: var(--hot); width: 100%; }
+.rack-actions { display: flex; flex-wrap: wrap; gap: 6px; max-width: 310px; }
+.workspace { display: grid; grid-template-columns: 300px minmax(540px, 1fr) 310px; gap: 14px; align-items: start; }
+.proposals-panel, .preview-panel, .timeline-panel, .inspector, .lineage { padding: 12px; }
+.section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.gen, .small { color: var(--muted); font-size: 11px; }
+.proposals { display: grid; gap: 9px; }
+.proposal-card { position: relative; border: 1px solid var(--line); background: var(--panel-2); border-radius: 10px; padding: 10px; cursor: pointer; overflow: hidden; }
+.proposal-card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--accent, var(--cyan)); }
+.proposal-card:hover, .proposal-card.selected { border-color: var(--accent, var(--cyan)); }
+.proposal-card .seat { color: var(--muted); font-size: 10px; }
+.proposal-card .lens { margin: 2px 0 5px; font-weight: 800; }
+.proposal-card .meta { color: var(--muted); font-size: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+.preview-stack { display: grid; gap: 14px; }
+.preview-head { display: flex; justify-content: space-between; align-items: end; gap: 12px; margin-bottom: 10px; }
+.transport { display: grid; grid-template-columns: auto minmax(180px, 1fr) 55px; gap: 7px; align-items: center; width: min(420px, 55%); }
+.transport input { accent-color: var(--cyan); }
+#stage { width: 100%; height: auto; border: 1px solid #292e3d; border-radius: 10px; background: #0b0d13; display: block; }
+.section-readout { margin-top: 8px; color: var(--muted); font-size: 11px; min-height: 17px; }
+.timeline { display: grid; grid-template-columns: repeat(8, minmax(78px, 1fr)); gap: 6px; }
+.timeline-event { border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: #11141d; min-width: 0; }
+.timeline-event.active { border-color: var(--hot); box-shadow: inset 0 0 0 1px rgba(255,76,167,.25); }
+.timeline-event .time { color: var(--muted); font-size: 9px; }
+.timeline-event button { width: 100%; margin: 6px 0; padding: 6px; color: var(--cyan); background: transparent; }
+.timeline-event .mini { font-size: 9px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.right-rail { display: grid; gap: 14px; }
+dl { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 7px 10px; }
+dt { color: var(--muted); } dd { margin: 0; text-align: right; color: var(--ink); }
+.pin { border-top: 1px solid var(--line); padding: 8px 0; }
+.pin:first-child { border-top: 0; padding-top: 0; }
+.pin .organ { font-size: 11px; font-weight: 700; }
+.pin .branch { color: var(--muted); font-size: 9px; overflow-wrap: anywhere; }
+.pin .authority-note { color: var(--violet); font-size: 9px; }
+footer { margin-top: 14px; color: var(--muted); font-size: 11px; text-align: center; }
+@media (max-width: 1250px) {
+  .control-rack { grid-template-columns: repeat(4, 1fr); }
+  .rack-actions { max-width: none; grid-column: span 4; }
+  .workspace { grid-template-columns: 260px 1fr; }
+  .right-rail { grid-column: span 2; grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 820px) {
+  .shell { padding: 12px; }
+  .topbar { align-items: flex-start; flex-direction: column; }
+  .status-stack { justify-items: start; }
+  .control-rack { grid-template-columns: repeat(2, 1fr); }
+  .rack-actions { grid-column: span 2; }
+  .workspace { display: block; }
+  .proposals-panel, .preview-stack, .right-rail { margin-bottom: 12px; }
+  .right-rail { display: grid; grid-template-columns: 1fr; }
+  .proposals { grid-template-columns: repeat(2, 1fr); }
+  .timeline { grid-template-columns: repeat(4, 1fr); }
+  .preview-head { align-items: flex-start; flex-direction: column; }
+  .transport { width: 100%; }
+}
+
+</style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">PLAYDECK × TOASTER × BLENDER × DOGRAM</div>
+        <h1>FRANKEN SMASH 001</h1>
+        <p class="lede">A deterministic composition cockpit. Six proposals. Layered causes. One human KEEP. No hidden taste oracle.</p>
+      </div>
+      <div class="status-stack">
+        <div id="authorityBadge" class="authority proposal">PROPOSAL</div>
+        <div id="digestBadge" class="digest">plan:--------</div>
+      </div>
+    </header>
+
+    <section class="control-rack panel">
+      <label>Seed<input id="seed" value="STATIC-ANIME-001" /></label>
+      <label>World<select id="world">
+        <option value="weird-simple-anime">weird simple anime</option>
+        <option value="cosmic-flipbook">cosmic flipbook</option>
+        <option value="stained-glass-mecha">stained glass mecha</option>
+        <option value="field-note-dream">field-note dream</option>
+      </select></label>
+      <label>Lens pressure <output id="lensPressureOut"></output><input id="lensPressure" type="range" min="0" max="1" step="0.01" value="0.68" /></label>
+      <label>Memory residue <output id="memoryOut"></output><input id="memory" type="range" min="0" max="1" step="0.01" value="0.42" /></label>
+      <label>Door openness <output id="doorOut"></output><input id="door" type="range" min="0" max="1" step="0.01" value="0.48" /></label>
+      <label>Relation pressure <output id="relationOut"></output><input id="relation" type="range" min="0" max="1" step="0.01" value="0.55" /></label>
+      <label>Rare awakening <output id="awakeningOut"></output><input id="awakening" type="range" min="0" max="1" step="0.01" value="0.14" /></label>
+      <div class="rack-actions">
+        <button id="scrape" class="ghost">SCRAPE FAMILY</button>
+        <button id="keep" class="primary">KEEP SELECTED</button>
+        <button id="witness">WITNESS PREVIEW</button>
+        <button id="exportReceipt">EXPORT RECEIPT</button>
+      </div>
+    </section>
+
+    <section class="workspace">
+      <aside class="panel proposals-panel">
+        <div class="section-head">
+          <div><span class="kicker">PLAYDECK</span><h2>Possibility Ecology</h2></div>
+          <div class="gen">GEN <span id="generation">1</span></div>
+        </div>
+        <div id="proposals" class="proposals"></div>
+      </aside>
+
+      <section class="preview-stack">
+        <div class="panel preview-panel">
+          <div class="preview-head">
+            <div>
+              <span class="kicker">DETERMINISTIC PREVIEW</span>
+              <h2 id="selectedTitle">No proposal selected</h2>
+            </div>
+            <div class="transport">
+              <button id="play">▶</button>
+              <input id="frame" type="range" min="0" max="1000" step="1" value="0" />
+              <output id="timeOut">0.0%</output>
+            </div>
+          </div>
+          <canvas id="stage" width="960" height="540" aria-label="Deterministic composition preview"></canvas>
+          <div id="sectionReadout" class="section-readout"></div>
+        </div>
+
+        <div class="panel timeline-panel">
+          <div class="section-head"><div><span class="kicker">TOASTER → PLAYDECK</span><h2>Section Editor</h2></div><div class="small">click a verb to cycle it</div></div>
+          <div id="timeline" class="timeline"></div>
+        </div>
+      </section>
+
+      <aside class="right-rail">
+        <section class="panel inspector">
+          <div class="section-head"><div><span class="kicker">BLENDER</span><h2>Cinematic Organs</h2></div></div>
+          <dl id="cinemaStats"></dl>
+        </section>
+        <section class="panel inspector">
+          <div class="section-head"><div><span class="kicker">DOGRAM</span><h2>Delta, not grade</h2></div></div>
+          <dl id="metrics"></dl>
+        </section>
+        <section class="panel lineage">
+          <div class="section-head"><div><span class="kicker">PINNED SOURCES</span><h2>Lineage</h2></div></div>
+          <div id="lineage"></div>
+        </section>
+      </aside>
+    </section>
+
+    <footer>
+      <strong>Law:</strong> SOURCE ≠ PLAN · PLAN ≠ RENDER · PROPOSAL ≠ HISTORY · MEMORY ≠ PRESENT FACT · MEASUREMENT ≠ GRADE
+    </footer>
+  </main>
+  <script>
+const SOURCE_PINS = [
+  {
+    organ: "Haunted Toaster / Listening Eye",
+    repo: "the-static-collective/the-haunted-toaster",
+    branch: "feature/listening-eye-v0",
+    sha: "fe185abbbfa9d56e613f953f7c92531853a80fb3",
+    authority: "selection-pressure-only",
+  },
+  {
+    organ: "Haunted Toaster / Batch Console",
+    repo: "the-static-collective/the-haunted-toaster",
+    branch: "mutant/batch-console-309",
+    sha: "b3b25c5cf99faaf5c7b9fc0ef6809939ecfca7b5",
+    authority: "album-transport",
+  },
+  {
+    organ: "Haunted Blender / Accepted Take Cut",
+    repo: "the-static-collective/the-haunted-blender",
+    branch: "experimental/accepted-take-cut-001",
+    sha: "787d65b4c3b6798a290dc6d45e7d1d99b4283abf",
+    authority: "accepted-derived-material",
+  },
+  {
+    organ: "Haunted Blender / Time Slice",
+    repo: "the-static-collective/the-haunted-blender",
+    branch: "experimental/time-slice-recajgger-001",
+    sha: "60c8746215f23aaa3e06f730fa44ecb0df341210",
+    authority: "derived-proposal",
+  },
+  {
+    organ: "Haunted Blender / Observer-Local Vision",
+    repo: "the-static-collective/the-haunted-blender",
+    branch: "experimental/observer-local-vision-001",
+    sha: "9beec9cce02f9c595386fc39fd7fb79a890434da",
+    authority: "presentation-only",
+  },
+  {
+    organ: "Haunted Blender / Memory Feedback",
+    repo: "the-static-collective/the-haunted-blender",
+    branch: "experimental/memory-feedback-001",
+    sha: "6aca64fdeeb458653e20558c4b23fa89ec622ba7",
+    authority: "memory-residue-only",
+  },
+  {
+    organ: "Haunted Blender / Orchard Chronobody",
+    repo: "the-static-collective/the-haunted-blender",
+    branch: "experimental/orchard-chronobody-001",
+    sha: "a73c0036117ff0b155ae0738d00e41c19206a6a3",
+    authority: "capability-addressing-only",
+  },
+  {
+    organ: "Playdeck / Studio 010",
+    repo: "the-static-collective/playdeck",
+    branch: "main",
+    sha: "a7cf718421e767fd382a01894063c3eeba3d2930",
+    authority: "causal-graph-and-continuation",
+  },
+  {
+    organ: "Dogram / Listener Delta",
+    repo: "the-static-collective/Dogram",
+    branch: "main",
+    sha: "551b5f9df18f17ec69b452ddcdff01718e0ff771",
+    authority: "measurement-only",
+  },
+];
+
+const LENSES = [
+  "Landscape",
+  "Architecture",
+  "Organism",
+  "Sigil / Type",
+  "Weather / Particles",
+  "Dimensional Space",
+];
+
+const SECTIONS = [
+  ["intro", 0.00, 0.08],
+  ["verse-a", 0.08, 0.23],
+  ["lift", 0.23, 0.34],
+  ["chorus-a", 0.34, 0.49],
+  ["verse-b", 0.49, 0.63],
+  ["bridge", 0.63, 0.76],
+  ["chorus-b", 0.76, 0.93],
+  ["outro", 0.93, 1.00],
+];
+
+const WORLDS = [
+  "weird-simple-anime",
+  "cosmic-flipbook",
+  "stained-glass-mecha",
+  "field-note-dream",
+];
+const CAMERAS = ["locked-wide", "slow-dolly", "observer-eye", "hinge-orbit", "snap-insert", "negative-space"];
+const MOTIONS = ["drift", "hinge", "breath", "stutter", "assemble", "fold", "orbit", "parallax"];
+const TOPOLOGIES = ["single-room", "triptych", "six-card-ring", "corridor", "contact-sheet", "fractured-stage"];
+const MATERIALS = ["ink-cell", "paper-glow", "vhs-ghost", "newsprint", "glass-line", "chalk-light"];
+const VERBS = ["arrive", "answer", "hinge", "assemble", "remember", "fracture", "cross", "resolve"];
+
+function hashText(value) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < value.length; i += 1) {
+    h ^= value.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
+function makeRng(...parts) {
+  let state = hashText(parts.join("::")) || 0x6d2b79f5;
+  return () => {
+    state += 0x6d2b79f5;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const pick = (rng, values) => values[Math.floor(rng() * values.length) % values.length];
+const q = (n, places = 3) => Number(n.toFixed(places));
+
+function candidateFamily({
+  seed = "FRANKEN-001",
+  generation = 1,
+  world = "weird-simple-anime",
+  lensPressure = 0.65,
+  memory = 0.42,
+  door = 0.45,
+  relation = 0.5,
+  awakening = 0.15,
+} = {}) {
+  return LENSES.map((lens, index) => {
+    const rng = makeRng(seed, generation, lens, world, lensPressure, memory, door, relation, awakening);
+    const novelty = q(0.35 + rng() * 0.65);
+    const lensMerit = q((0.25 + rng() * 0.75) * lensPressure);
+    return {
+      id: `g${generation}-p${index + 1}-${hashText(`${seed}:${generation}:${lens}`).toString(16).slice(0, 6)}`,
+      generation,
+      seat: index,
+      authorityClass: "proposal",
+      lens,
+      world: WORLDS.includes(world) ? world : "weird-simple-anime",
+      camera: pick(rng, CAMERAS),
+      motion: pick(rng, MOTIONS),
+      topology: pick(rng, TOPOLOGIES),
+      material: pick(rng, MATERIALS),
+      paletteShift: q(rng()),
+      geometryBias: q(rng() * 2 - 1),
+      weather: q(rng()),
+      memory: q(Math.min(1, memory * (0.72 + rng() * 0.56))),
+      door: q(Math.min(1, door * (0.78 + rng() * 0.44))),
+      relation: q(Math.min(1, relation * (0.72 + rng() * 0.56))),
+      awakening: q(Math.min(1, awakening * (0.7 + rng() * 0.6))),
+      timeSlice: Math.round(8 + rng() * 40),
+      noveltyMerit: novelty,
+      lensMerit,
+      candidateMerit: q(2 * novelty + lensMerit),
+    };
+  });
+}
+
+function composePlan({candidate, seed = "FRANKEN-001", overrides = {}}) {
+  if (!candidate) throw new Error("candidate required");
+  const rng = makeRng(seed, candidate.id, "plan");
+  const cardIds = Array.from({length: 6}, (_, i) => `card-${i + 1}`);
+  const events = SECTIONS.map(([section, start, end], i) => {
+    const override = overrides[section] ?? {};
+    const verb = override.verb ?? VERBS[(i + Math.floor(rng() * VERBS.length)) % VERBS.length];
+    const camera = override.camera ?? (i === 5 ? "observer-eye" : pick(rng, CAMERAS));
+    const focusCount = 1 + Math.floor(rng() * 4);
+    const shuffled = [...cardIds];
+    for (let k = shuffled.length - 1; k > 0; k -= 1) {
+      const j = Math.floor(rng() * (k + 1));
+      [shuffled[k], shuffled[j]] = [shuffled[j], shuffled[k]];
+    }
+    const cards = shuffled.slice(0, focusCount).sort();
+    return {
+      id: `${candidate.id}:${section}`,
+      section,
+      start: q(start),
+      end: q(end),
+      verb,
+      camera,
+      cards,
+      motion: override.motion ?? (i === 6 ? "assemble" : pick(rng, MOTIONS)),
+      door: q(Math.min(1, Math.max(0, candidate.door + (rng() - 0.5) * 0.25))),
+      memory: q(Math.min(1, Math.max(0, candidate.memory + (i > 3 ? 0.12 : -0.04) + (rng() - 0.5) * 0.18))),
+      relation: q(Math.min(1, Math.max(0, candidate.relation + (rng() - 0.5) * 0.2))),
+      timeSlice: i === 5 || i === 6 ? candidate.timeSlice : 0,
+      awakening: i === 5 ? q(candidate.awakening) : 0,
+    };
+  });
+
+  const plan = {
+    schema: "static-collective/franken-composition-plan/v0",
+    candidateId: candidate.id,
+    world: candidate.world,
+    lens: candidate.lens,
+    topology: candidate.topology,
+    material: candidate.material,
+    events,
+    rendererAuthority: "plan-only",
+  };
+  plan.digest = `plan:${hashText(JSON.stringify(plan)).toString(16).padStart(8, "0")}`;
+  return plan;
+}
+
+function measurePlan(plan) {
+  const events = plan.events;
+  const motionVariety = new Set(events.map((e) => e.motion)).size;
+  const cameraVariety = new Set(events.map((e) => e.camera)).size;
+  const meanMemory = events.reduce((a, e) => a + e.memory, 0) / events.length;
+  const meanRelation = events.reduce((a, e) => a + e.relation, 0) / events.length;
+  const doorTravel = events.slice(1).reduce((a, e, i) => a + Math.abs(e.door - events[i].door), 0);
+  const cardTransitions = events.slice(1).reduce((a, e, i) => {
+    const before = new Set(events[i].cards);
+    const after = new Set(e.cards);
+    let delta = 0;
+    for (const id of new Set([...before, ...after])) {
+      if (before.has(id) !== after.has(id)) delta += 1;
+    }
+    return a + delta;
+  }, 0);
+  const timeSliceSections = events.filter((e) => e.timeSlice > 0).length;
+  return {
+    schema: "static-collective/dogram-like-composition-delta/v0",
+    authority: "measurement-only",
+    motionVariety,
+    cameraVariety,
+    meanMemory: q(meanMemory),
+    meanRelation: q(meanRelation),
+    doorTravel: q(doorTravel),
+    cardTransitions,
+    timeSliceSections,
+    eventCount: events.length,
+    digest: `delta:${hashText(JSON.stringify(events)).toString(16).padStart(8, "0")}`,
+  };
+}
+
+function makeReceipt({seed, generation, candidate, plan, disposition = "PREVIEW", overrides = {}}) {
+  const receipt = {
+    schema: "static-collective/franken-smash-receipt/v0",
+    seed,
+    generation,
+    disposition,
+    authorityClass:
+      disposition === "WITNESS" ? "resolved-preview-execution" :
+      disposition === "KEEP" ? "continuation-permission" :
+      "proposal",
+    candidate,
+    planDigest: plan.digest,
+    overrides,
+    measurements: measurePlan(plan),
+    sourcePins: SOURCE_PINS,
+    laws: [
+      "SOURCE != PLAN",
+      "PLAN != RENDER",
+      "PROPOSAL != HISTORY",
+      "MEMORY != PRESENT FACT",
+      "MEASUREMENT != GRADE",
+      "KEEP = CONTINUATION PERMISSION",
+      "WITNESS = RESOLVED PREVIEW EXECUTION",
+    ],
+  };
+  receipt.digest = `receipt:${hashText(JSON.stringify(receipt)).toString(16).padStart(8, "0")}`;
+  return receipt;
+}
+
+
+
+const $ = (id) => document.getElementById(id);
+const ui = {
+  seed: $("seed"), world: $("world"), lensPressure: $("lensPressure"), memory: $("memory"), door: $("door"), relation: $("relation"), awakening: $("awakening"),
+  lensPressureOut: $("lensPressureOut"), memoryOut: $("memoryOut"), doorOut: $("doorOut"), relationOut: $("relationOut"), awakeningOut: $("awakeningOut"),
+  proposals: $("proposals"), generation: $("generation"), selectedTitle: $("selectedTitle"), frame: $("frame"), timeOut: $("timeOut"), play: $("play"), stage: $("stage"), timeline: $("timeline"), sectionReadout: $("sectionReadout"),
+  cinemaStats: $("cinemaStats"), metrics: $("metrics"), lineage: $("lineage"), authorityBadge: $("authorityBadge"), digestBadge: $("digestBadge"), scrape: $("scrape"), keep: $("keep"), witness: $("witness"), exportReceipt: $("exportReceipt"),
+};
+const ctx = ui.stage.getContext("2d");
+
+let generation = 1;
+let family = [];
+let selectedIndex = 0;
+let overrides = {};
+let disposition = "PREVIEW";
+let playing = false;
+let raf = 0;
+let last = performance.now();
+
+const accents = ["#58e5ff", "#ffcf5c", "#c8ff62", "#ff4ca7", "#b59cff", "#f59d63"];
+const verbs = ["arrive", "answer", "hinge", "assemble", "remember", "fracture", "cross", "resolve"];
+
+function inputs() {
+  return {
+    seed: ui.seed.value.trim() || "FRANKEN-001",
+    generation,
+    world: ui.world.value,
+    lensPressure: Number(ui.lensPressure.value),
+    memory: Number(ui.memory.value),
+    door: Number(ui.door.value),
+    relation: Number(ui.relation.value),
+    awakening: Number(ui.awakening.value),
+  };
+}
+
+function selectedCandidate() { return family[selectedIndex]; }
+function currentPlan() { return composePlan({candidate: selectedCandidate(), seed: inputs().seed, overrides}); }
+function currentEvent(plan = currentPlan()) {
+  const t = Number(ui.frame.value) / 1000;
+  return plan.events.find((event) => t >= event.start && t <= event.end) ?? plan.events.at(-1);
+}
+
+function setOutputs() {
+  for (const [input, output] of [[ui.lensPressure, ui.lensPressureOut], [ui.memory, ui.memoryOut], [ui.door, ui.doorOut], [ui.relation, ui.relationOut], [ui.awakening, ui.awakeningOut]]) {
+    output.textContent = Number(input.value).toFixed(2);
+  }
+}
+
+function regenerate({preserveSelection = false} = {}) {
+  const previousLens = preserveSelection ? selectedCandidate()?.lens : null;
+  family = candidateFamily(inputs());
+  selectedIndex = Math.max(0, previousLens ? family.findIndex((x) => x.lens === previousLens) : 0);
+  if (selectedIndex < 0) selectedIndex = 0;
+  disposition = "PREVIEW";
+  ui.authorityBadge.textContent = "PROPOSAL";
+  ui.authorityBadge.className = "authority proposal";
+  renderAll();
+}
+
+function renderProposals() {
+  ui.generation.textContent = String(generation);
+  ui.proposals.innerHTML = family.map((candidate, i) => `
+    <article class="proposal-card ${i === selectedIndex ? "selected" : ""}" data-index="${i}" style="--accent:${accents[i]}">
+      <div class="seat">SEAT ${i + 1} · merit ${candidate.candidateMerit.toFixed(2)}</div>
+      <div class="lens">${candidate.lens}</div>
+      <div class="meta"><span>${candidate.topology}</span><span>${candidate.camera}</span><span>${candidate.motion}</span><span>${candidate.material}</span></div>
+    </article>`).join("");
+  ui.proposals.querySelectorAll(".proposal-card").forEach((card) => {
+    card.addEventListener("click", () => {
+      selectedIndex = Number(card.dataset.index);
+      disposition = "PREVIEW";
+      ui.authorityBadge.textContent = "PROPOSAL";
+      ui.authorityBadge.className = "authority proposal";
+      renderAll();
+    });
+  });
+}
+
+function renderTimeline(plan) {
+  const t = Number(ui.frame.value) / 1000;
+  ui.timeline.innerHTML = plan.events.map((event) => `
+    <div class="timeline-event ${t >= event.start && t <= event.end ? "active" : ""}" data-section="${event.section}">
+      <div class="time">${Math.round(event.start * 100)}–${Math.round(event.end * 100)}%</div>
+      <strong>${event.section}</strong>
+      <button data-cycle="${event.section}">${event.verb}</button>
+      <div class="mini">${event.camera}</div>
+      <div class="mini">${event.motion} · mem ${event.memory.toFixed(2)}</div>
+    </div>`).join("");
+  ui.timeline.querySelectorAll("button[data-cycle]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const section = button.dataset.cycle;
+      const event = plan.events.find((e) => e.section === section);
+      const next = verbs[(verbs.indexOf(event.verb) + 1) % verbs.length];
+      overrides = {...overrides, [section]: {...(overrides[section] ?? {}), verb: next}};
+      disposition = "PREVIEW";
+      ui.authorityBadge.textContent = "PROPOSAL";
+      ui.authorityBadge.className = "authority proposal";
+      renderAll();
+    });
+  });
+}
+
+function kv(target, entries) {
+  target.innerHTML = entries.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+}
+
+function renderInspectors(candidate, plan) {
+  kv(ui.cinemaStats, [
+    ["lens", candidate.lens], ["camera", currentEvent(plan).camera], ["topology", candidate.topology], ["material", candidate.material], ["door", currentEvent(plan).door.toFixed(2)], ["memory", currentEvent(plan).memory.toFixed(2)], ["time slice", currentEvent(plan).timeSlice || "off"], ["awakening", currentEvent(plan).awakening ? currentEvent(plan).awakening.toFixed(2) : "held"],
+  ]);
+  const m = measurePlan(plan);
+  kv(ui.metrics, [
+    ["motion variety", m.motionVariety], ["camera variety", m.cameraVariety], ["mean memory", m.meanMemory], ["mean relation", m.meanRelation], ["door travel", m.doorTravel], ["card transitions", m.cardTransitions], ["time-slice sections", m.timeSliceSections], ["authority", m.authority],
+  ]);
+  ui.lineage.innerHTML = SOURCE_PINS.map((pin) => `<div class="pin"><div class="organ">${pin.organ}</div><div class="branch">${pin.branch} @ ${pin.sha.slice(0, 9)}</div><div class="authority-note">${pin.authority}</div></div>`).join("");
+}
+
+function colorFor(i, alpha = 1) {
+  const c = accents[i % accents.length];
+  if (alpha === 1) return c;
+  const n = parseInt(c.slice(1), 16); const r = n >> 16; const g = (n >> 8) & 255; const b = n & 255;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function drawAnimeFigure(x, y, scale, phase, ghost = 0) {
+  ctx.save();
+  ctx.translate(x, y + Math.sin(phase * Math.PI * 2) * 4 * scale);
+  ctx.scale(scale, scale);
+  ctx.globalAlpha = 1 - ghost;
+  ctx.strokeStyle = ghost ? `rgba(181,156,255,${0.25 + ghost * .25})` : "#f5f3ed";
+  ctx.fillStyle = ghost ? `rgba(181,156,255,${0.08 + ghost * .1})` : "rgba(245,243,237,.08)";
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.ellipse(0, 0, 38, 46, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-34, -28); ctx.quadraticCurveTo(-6, -70, 31, -32); ctx.moveTo(-26, -35); ctx.lineTo(-12, -58); ctx.moveTo(4, -45); ctx.lineTo(17, -62); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-24, 3); ctx.quadraticCurveTo(-11, -4, 1, 4); ctx.moveTo(4, 4); ctx.quadraticCurveTo(17, -3, 28, 5); ctx.stroke();
+  ctx.beginPath(); ctx.arc(-9, 3, 2.6, 0, Math.PI * 2); ctx.arc(15, 4, 2.6, 0, Math.PI * 2); ctx.fillStyle = ghost ? "rgba(88,229,255,.4)" : "#58e5ff"; ctx.fill();
+  ctx.beginPath(); ctx.moveTo(0, 14); ctx.lineTo(8, 17); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-17, 43); ctx.lineTo(-28, 98); ctx.lineTo(29, 98); ctx.lineTo(18, 43); ctx.stroke();
+  ctx.restore();
+}
+
+function drawStage(plan) {
+  const candidate = selectedCandidate();
+  const t = Number(ui.frame.value) / 1000;
+  const event = currentEvent(plan);
+  const W = ui.stage.width, H = ui.stage.height;
+  const seed = hashText(`${inputs().seed}:${candidate.id}:${event.id}`);
+  ctx.clearRect(0, 0, W, H);
+
+  const hue = Math.round(candidate.paletteShift * 290 + 20);
+  const bg = ctx.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, `hsl(${hue} 35% 8%)`); bg.addColorStop(1, `hsl(${(hue + 80) % 360} 35% 4%)`);
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+
+  // architecture / room
+  ctx.strokeStyle = "rgba(245,243,237,.18)"; ctx.lineWidth = 2;
+  const horizon = H * (0.58 + candidate.geometryBias * .05);
+  ctx.beginPath(); ctx.moveTo(0, horizon); ctx.lineTo(W, horizon); ctx.stroke();
+  for (let i = 0; i < 7; i++) {
+    const x = (i / 6) * W;
+    ctx.beginPath(); ctx.moveTo(W / 2, horizon); ctx.lineTo(x, H); ctx.stroke();
+  }
+
+  // cards / contact-sheet ontology
+  event.cards.forEach((id, j) => {
+    const n = Number(id.split("-")[1]) - 1;
+    const a = (n / 6) * Math.PI * 2 + t * (candidate.motion === "orbit" ? 1.7 : .28);
+    const ring = 145 + 50 * Math.sin((t + n / 6) * Math.PI * 2);
+    const x = W / 2 + Math.cos(a) * ring + (j - event.cards.length / 2) * 18;
+    const y = H / 2 + Math.sin(a) * ring * .55;
+    const w = 88, h = 118;
+    ctx.save(); ctx.translate(x, y); ctx.rotate(candidate.motion === "hinge" ? Math.sin(t * 12 + n) * .18 : 0);
+    ctx.fillStyle = "rgba(8,9,13,.78)"; ctx.strokeStyle = colorFor(n, .86); ctx.lineWidth = 2; ctx.fillRect(-w/2, -h/2, w, h); ctx.strokeRect(-w/2, -h/2, w, h);
+    ctx.fillStyle = colorFor(n, .16); ctx.fillRect(-w/2 + 8, -h/2 + 8, w - 16, h - 16);
+    ctx.fillStyle = colorFor(n); ctx.font = "700 12px ui-monospace"; ctx.fillText(id.toUpperCase(), -w/2 + 10, h/2 - 12); ctx.restore();
+  });
+
+  // door hinge from Blender
+  const doorW = 176, doorH = 310; const open = event.door;
+  ctx.save(); ctx.translate(W * .74, horizon - doorH / 2); ctx.strokeStyle = "#ffcf5c"; ctx.lineWidth = 3; ctx.strokeRect(-doorW/2, -doorH/2, doorW, doorH);
+  ctx.transform(Math.max(.05, Math.cos(open * 1.45)), 0, -.18 * open, 1, 0, 0);
+  ctx.fillStyle = `rgba(255,207,92,${.05 + open * .08})`; ctx.fillRect(-doorW/2, -doorH/2, doorW, doorH); ctx.strokeRect(-doorW/2, -doorH/2, doorW, doorH); ctx.restore();
+
+  // observer-local memory afterimages
+  const ghostCount = Math.round(event.memory * 4);
+  for (let g = ghostCount; g >= 1; g--) drawAnimeFigure(W * .37 - g * 16, horizon - 66 + g * 3, 1.2, t - g * .035, g / (ghostCount + 1));
+  drawAnimeFigure(W * .37, horizon - 66, 1.2, t, 0);
+
+  // weather / particles, deterministic positions
+  const particles = 14 + Math.round(candidate.weather * 42);
+  for (let i = 0; i < particles; i++) {
+    const x = ((seed + i * 977 + Math.floor(t * 500) * (i % 3 + 1)) % W + W) % W;
+    const y = ((seed * (i + 3) + i * 613 + Math.floor(t * 900)) % H + H) % H;
+    ctx.fillStyle = colorFor(i, .18 + candidate.weather * .22); ctx.fillRect(x, y, 2 + (i % 3), 2 + (i % 3));
+  }
+
+  // time-slice bridge section
+  if (event.timeSlice) {
+    const strips = Math.min(40, event.timeSlice);
+    for (let i = 0; i < strips; i += 2) {
+      const x = i * (W / strips);
+      ctx.fillStyle = i % 4 ? "rgba(88,229,255,.035)" : "rgba(255,76,167,.05)";
+      ctx.fillRect(x, 0, W / strips, H);
+    }
+  }
+
+  // sigil / title layer
+  ctx.fillStyle = "rgba(245,243,237,.78)"; ctx.font = "700 14px ui-monospace"; ctx.fillText(`${candidate.lens.toUpperCase()} / ${event.section.toUpperCase()} / ${event.verb.toUpperCase()}`, 24, 34);
+  ctx.fillStyle = "rgba(157,164,184,.8)"; ctx.font = "11px ui-monospace"; ctx.fillText(`${candidate.camera} · ${candidate.topology} · ${candidate.material}`, 24, 53);
+  const sigil = hashText(`${candidate.id}:${event.section}`).toString(16).toUpperCase().padStart(8, "0");
+  ctx.font = "700 34px ui-monospace"; ctx.fillStyle = "rgba(181,156,255,.16)"; ctx.fillText(sigil, W - 190, H - 26);
+
+  // rare awakening: bounded portal, not full-scene generation
+  if (event.awakening > 0) {
+    const r = 28 + event.awakening * 85 * (0.6 + .4 * Math.sin(t * Math.PI * 8) ** 2);
+    const grad = ctx.createRadialGradient(W*.56, H*.42, 1, W*.56, H*.42, r);
+    grad.addColorStop(0, "rgba(88,229,255,.55)"); grad.addColorStop(.45, "rgba(255,76,167,.2)"); grad.addColorStop(1, "rgba(8,9,13,0)");
+    ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(W*.56, H*.42, r, 0, Math.PI*2); ctx.fill();
+  }
+
+  ui.sectionReadout.textContent = `${Math.round(t * 1000) / 10}% · ${event.section} · ${event.verb} · camera=${event.camera} · memory=${event.memory.toFixed(2)} · relation=${event.relation.toFixed(2)}`;
+}
+
+function renderAll() {
+  setOutputs();
+  renderProposals();
+  const candidate = selectedCandidate();
+  const plan = currentPlan();
+  ui.selectedTitle.textContent = `${candidate.lens} / ${candidate.world}`;
+  ui.digestBadge.textContent = plan.digest;
+  ui.timeOut.textContent = `${(Number(ui.frame.value) / 10).toFixed(1)}%`;
+  renderTimeline(plan);
+  renderInspectors(candidate, plan);
+  drawStage(plan);
+}
+
+function setDisposition(next) {
+  disposition = next;
+  if (next === "KEEP") {
+    ui.authorityBadge.textContent = "CONTINUATION PERMISSION"; ui.authorityBadge.className = "authority keep";
+  } else if (next === "WITNESS") {
+    ui.authorityBadge.textContent = "RESOLVED EXECUTION"; ui.authorityBadge.className = "authority witness";
+  }
+  const receipt = makeReceipt({seed: inputs().seed, generation, candidate: selectedCandidate(), plan: currentPlan(), disposition, overrides});
+  ui.digestBadge.textContent = receipt.digest;
+}
+
+function downloadReceipt() {
+  const receipt = makeReceipt({seed: inputs().seed, generation, candidate: selectedCandidate(), plan: currentPlan(), disposition, overrides});
+  const blob = new Blob([JSON.stringify(receipt, null, 2) + "\n"], {type: "application/json"});
+  const url = URL.createObjectURL(blob); const a = document.createElement("a");
+  a.href = url; a.download = `franken-smash-${generation}-${selectedCandidate().id}.receipt.json`; a.click(); URL.revokeObjectURL(url);
+}
+
+function tick(now) {
+  const dt = Math.min(80, now - last); last = now;
+  if (playing) {
+    let v = Number(ui.frame.value) + dt * .055;
+    if (v > 1000) v = 0;
+    ui.frame.value = String(v);
+    const plan = currentPlan(); ui.timeOut.textContent = `${(v / 10).toFixed(1)}%`; renderTimeline(plan); drawStage(plan);
+    raf = requestAnimationFrame(tick);
+  }
+}
+
+[ui.seed, ui.world, ui.lensPressure, ui.memory, ui.door, ui.relation, ui.awakening].forEach((control) => control.addEventListener("input", () => regenerate({preserveSelection: true})));
+ui.frame.addEventListener("input", () => { const plan = currentPlan(); ui.timeOut.textContent = `${(Number(ui.frame.value)/10).toFixed(1)}%`; renderTimeline(plan); drawStage(plan); });
+ui.play.addEventListener("click", () => { playing = !playing; ui.play.textContent = playing ? "Ⅱ" : "▶"; cancelAnimationFrame(raf); last = performance.now(); if (playing) raf = requestAnimationFrame(tick); });
+ui.scrape.addEventListener("click", () => { generation += 1; overrides = {}; regenerate(); });
+ui.keep.addEventListener("click", () => setDisposition("KEEP"));
+ui.witness.addEventListener("click", () => setDisposition("WITNESS"));
+ui.exportReceipt.addEventListener("click", downloadReceipt);
+
+regenerate();
+
+</script>
+</body>
+</html>
