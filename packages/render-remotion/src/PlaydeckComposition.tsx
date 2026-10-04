@@ -96,6 +96,7 @@ export const PlaydeckComposition: React.FC<PlaydeckRenderProps> = ({
         layouts={layouts}
         width={plan.width}
         height={plan.height}
+        franken={frankenCinematic}
       />
 
       {orderedCards.map((card) => {
