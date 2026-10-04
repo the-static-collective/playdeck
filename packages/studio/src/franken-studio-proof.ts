@@ -274,7 +274,20 @@ assert.equal(
   "string",
 );
 assert.ok(
-  !JSON.stringify(decoratedA).includes(
+  !JSON.stringify(decoratedA.events).includes(
+    "MEASURED_RESPONSE_CHANGE",
+  ),
+);
+assert.ok(
+  !JSON.stringify(continuation.proposal).includes(
+    "MEASURED_RESPONSE_CHANGE",
+  ),
+);
+const frankenProvenance = decoratedA.metadata?.studioFranken as
+  | Record<string, unknown>
+  | undefined;
+assert.ok(
+  JSON.stringify(frankenProvenance?.sourceCapsules).includes(
     "MEASURED_RESPONSE_CHANGE",
   ),
 );
