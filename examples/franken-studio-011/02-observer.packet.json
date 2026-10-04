@@ -1,0 +1,25 @@
+{
+  "producer": {
+    "repo": "the-static-collective/the-haunted-blender",
+    "branch": "experimental/observer-local-vision-001",
+    "sha": "9beec9cce02f9c595386fc39fd7fb79a890434da"
+  },
+  "artifact": {
+    "schema": "haunted-blender/observer-local-projection/v0",
+    "observer_id": "eye-a",
+    "observer_position": "threshold",
+    "world_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "beat": 2,
+    "environment_response": [
+      {
+        "fact_id": "door",
+        "mode": "present_to_eye"
+      },
+      {
+        "fact_id": "figure",
+        "mode": "memory_residue"
+      }
+    ],
+    "projection_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+  }
+}
