@@ -69,6 +69,12 @@ The media then enters through already-existing Playdeck renderer layers:
 
 No digest match means no pixels enter the plan.
 
+The same bindings are re-verified **server-side immediately before render** against the source-capsule `outputSha256`. A modified client payload therefore cannot obtain a sealed receipt merely by bypassing the browser check.
+
+Externally materialized Blender video events are explicitly excluded from Playdeck's normal deterministic awakening generator; they remain source-verified derived media rather than being silently replaced with a Playdeck-generated echo.
+
+The projected/rendered receipt preserves `studioFranken` and `studioFrankenMedia` metadata, including exact producer pins, source capsule identities, authority classes, bindings, and injected event IDs. External media receipt events are described as `external-derived-media`, not as newly created artifacts.
+
 The selected lens still produces the larger deterministic grammar through ordinary Playdeck verbs:
 
 - `drift`
