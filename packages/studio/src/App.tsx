@@ -34,8 +34,10 @@ import type {
 } from "./cockpitTypes";
 import {recomposeStudioPlan} from "./recompose";
 import {
+  bindFrankenMediaToPlan,
   compileFrankenContext,
   decoratePlanForFranken,
+  expectedFrankenMedia,
   keepFrankenProposal,
   parseFrankenPacket,
   patchWorldForFranken,
@@ -155,6 +157,8 @@ export const App: React.FC = () => {
     useState<string | null>(null);
   const [frankenMessage, setFrankenMessage] =
     useState<string | null>(null);
+  const [frankenMediaBindings, setFrankenMediaBindings] =
+    useState<Record<string, string>>({});
   const dynamicUrls = useRef<string[]>([]);
 
   useEffect(
@@ -311,6 +315,7 @@ export const App: React.FC = () => {
       setFrankenProposals([]);
       setSelectedFrankenProposalId(null);
       setFrankenMessage(null);
+      setFrankenMediaBindings({});
       setLastCommit(null);
       setDirty(false);
     } catch (reason) {
@@ -401,6 +406,7 @@ export const App: React.FC = () => {
     setFrankenProposals([]);
     setSelectedFrankenProposalId(null);
     setFrankenMessage(null);
+    setFrankenMediaBindings({});
     setInheritAfterRender(
       archive.preferences.inheritAfterRender,
     );
@@ -820,6 +826,39 @@ export const App: React.FC = () => {
     }
   };
 
+  const clearFrankenMedia = () => {
+    const logicals = new Set(Object.values(frankenMediaBindings));
+    for (const logical of logicals) {
+      const url = runtimeAssetUrls[logical];
+      if (url) URL.revokeObjectURL(url);
+    }
+    setRuntimeAssets((current) =>
+      Object.fromEntries(
+        Object.entries(current).filter(
+          ([logical]) => !logicals.has(logical),
+        ),
+      ),
+    );
+    setRuntimeAssetUrls((current) =>
+      Object.fromEntries(
+        Object.entries(current).filter(
+          ([logical]) => !logicals.has(logical),
+        ),
+      ),
+    );
+    setFrankenMediaBindings({});
+  };
+
+  const sha256File = async (file: File): Promise<string> => {
+    const digest = await crypto.subtle.digest(
+      "SHA-256",
+      await file.arrayBuffer(),
+    );
+    return Array.from(new Uint8Array(digest))
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
+  };
+
   const loadFrankenPackets = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -835,6 +874,7 @@ export const App: React.FC = () => {
       );
       const context = compileFrankenContext(packets);
       const proposals = proposeFrankenFamily(context);
+      clearFrankenMedia();
       setFrankenContext(context);
       setFrankenProposals(proposals);
       setSelectedFrankenProposalId(proposals[0]?.id ?? null);
@@ -850,6 +890,80 @@ export const App: React.FC = () => {
       setError(
         reason instanceof Error ? reason.message : String(reason),
       );
+    }
+  };
+
+  const bindFrankenMedia = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = Array.from(event.target.files ?? []);
+    if (!frankenContext || files.length === 0) return;
+
+    try {
+      setError(null);
+      const expectations = expectedFrankenMedia(frankenContext);
+      const nextBindings = {...frankenMediaBindings};
+      const nextAssets: Record<string, StudioAssetPayload> = {};
+      const nextUrls: Record<string, string> = {};
+
+      for (const file of files) {
+        const digest = await sha256File(file);
+        const expected = expectations.find(
+          (item) => item.sha256 === digest,
+        );
+        if (!expected) {
+          throw new Error(
+            `No admitted Blender receipt expects media SHA-256 ${digest} (${file.name}).`,
+          );
+        }
+
+        const logical = `asset://franken/${expected.capsuleId}`;
+        const priorLogical = nextBindings[expected.capsuleId];
+        if (priorLogical) {
+          const priorUrl = runtimeAssetUrls[priorLogical];
+          if (priorUrl) URL.revokeObjectURL(priorUrl);
+        }
+
+        const payload = await fileToPayload(file);
+        const url = assetPayloadToObjectUrl(payload);
+        dynamicUrls.current.push(url);
+        nextBindings[expected.capsuleId] = logical;
+        nextAssets[logical] = payload;
+        nextUrls[logical] = url;
+      }
+
+      setRuntimeAssets((current) => ({
+        ...current,
+        ...nextAssets,
+      }));
+      setRuntimeAssetUrls((current) => ({
+        ...current,
+        ...nextUrls,
+      }));
+      setFrankenMediaBindings(nextBindings);
+      setSession((current) =>
+        current
+          ? {
+              ...current,
+              plan: bindFrankenMediaToPlan(
+                current.plan,
+                nextBindings,
+              ),
+              receipt: undefined,
+            }
+          : current,
+      );
+      setDirty(true);
+      setLastCommit(null);
+      setFrankenMessage(
+        `${Object.keys(nextBindings).length} Blender media artifact(s) digest-verified and bound locally.`,
+      );
+      event.target.value = "";
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : String(reason),
+      );
+      event.target.value = "";
     }
   };
 
@@ -892,9 +1006,12 @@ export const App: React.FC = () => {
         worldRule,
         priorPlan: session.plan,
       });
-      const plan = decoratePlanForFranken(
-        recomposed,
-        continuation,
+      const plan = bindFrankenMediaToPlan(
+        decoratePlanForFranken(
+          recomposed,
+          continuation,
+        ),
+        frankenMediaBindings,
       );
 
       setSession((current) =>
@@ -922,6 +1039,7 @@ export const App: React.FC = () => {
   };
 
   const clearFranken = () => {
+    clearFrankenMedia();
     setFrankenContext(null);
     setFrankenProposals([]);
     setSelectedFrankenProposalId(null);
@@ -1750,6 +1868,27 @@ export const App: React.FC = () => {
                     </div>
                   ))}
                 </div>
+
+                {expectedFrankenMedia(frankenContext).length > 0 ? (
+                  <div className="franken-media-bind">
+                    <div>
+                      <span>VERIFIED BLENDER MEDIA</span>
+                      <strong>
+                        {Object.keys(frankenMediaBindings).length} /{" "}
+                        {expectedFrankenMedia(frankenContext).length} bound
+                      </strong>
+                    </div>
+                    <label>
+                      Bind PNG / MP4 by SHA-256
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/png,video/mp4,.png,.mp4"
+                        onChange={bindFrankenMedia}
+                      />
+                    </label>
+                  </div>
+                ) : null}
 
                 <div className="franken-proposal-grid">
                   {frankenProposals.map((proposal) => (
