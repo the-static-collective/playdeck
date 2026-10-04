@@ -828,6 +828,22 @@ export const App: React.FC = () => {
 
   const clearFrankenMedia = () => {
     const logicals = new Set(Object.values(frankenMediaBindings));
+    const storedMedia = session?.plan.metadata?.studioFrankenMedia;
+    if (
+      storedMedia &&
+      typeof storedMedia === "object" &&
+      !Array.isArray(storedMedia)
+    ) {
+      const bindings = (storedMedia as {
+        bindings?: Array<{source?: unknown}>;
+      }).bindings;
+      for (const binding of bindings ?? []) {
+        if (typeof binding.source === "string") {
+          logicals.add(binding.source);
+        }
+      }
+    }
+
     for (const logical of logicals) {
       const url = runtimeAssetUrls[logical];
       if (url) URL.revokeObjectURL(url);
@@ -847,6 +863,20 @@ export const App: React.FC = () => {
       ),
     );
     setFrankenMediaBindings({});
+
+    if (logicals.size > 0) {
+      setSession((current) =>
+        current
+          ? {
+              ...current,
+              plan: bindFrankenMediaToPlan(current.plan, {}),
+              receipt: undefined,
+            }
+          : current,
+      );
+      setLastCommit(null);
+      setDirty(true);
+    }
   };
 
   const sha256File = async (file: File): Promise<string> => {
