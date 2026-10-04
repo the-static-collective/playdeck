@@ -936,3 +936,149 @@ export const decoratePlanForFranken = (
     },
   };
 };
+
+export type FrankenMediaExpectation = {
+  capsuleId: string;
+  role: "time-slice-material" | "memory-feedback-material";
+  sha256: string;
+};
+
+export const expectedFrankenMedia = (
+  context: FrankenContext,
+): FrankenMediaExpectation[] =>
+  context.evidence.flatMap((capsule) => {
+    if (
+      capsule.role !== "time-slice-material" &&
+      capsule.role !== "memory-feedback-material"
+    ) {
+      return [];
+    }
+    const digest = capsule.summary.outputSha256;
+    if (typeof digest !== "string" || !digest) {
+      return [];
+    }
+    return [{
+      capsuleId: capsule.id,
+      role: capsule.role,
+      sha256: digest,
+    }];
+  });
+
+export const bindFrankenMediaToPlan = (
+  plan: CompositionPlan,
+  bindings: Record<string, string>,
+): CompositionPlan => {
+  const baseEvents = plan.events.filter(
+    (event) =>
+      !(
+        event.params?.frankenMediaAdapter === true &&
+        typeof event.params?.frankenCapsuleId === "string"
+      ),
+  );
+  const added: CompositionEvent[] = [];
+
+  for (const event of baseEvents) {
+    const guidance = event.params?.franken;
+    if (!isRecord(guidance)) continue;
+
+    const cardId = event.cards?.[0];
+    if (!cardId) continue;
+
+    const timeSliceCapsuleId =
+      typeof guidance.timeSliceCapsuleId === "string"
+        ? guidance.timeSliceCapsuleId
+        : undefined;
+    const timeSliceSource = timeSliceCapsuleId
+      ? bindings[timeSliceCapsuleId]
+      : undefined;
+
+    if (timeSliceCapsuleId && timeSliceSource) {
+      added.push({
+        id: `${event.id}--franken-time-slice`,
+        at: Math.min(
+          plan.duration,
+          Math.round((event.at + 0.001) * 1000) / 1000,
+        ),
+        type: "freeze",
+        cards: [cardId],
+        params: {
+          sourceCardId: cardId,
+          newCardId: `${cardId}--franken-time-slice`,
+          freezeSource: timeSliceSource,
+          frankenMediaAdapter: true,
+          frankenCapsuleId: timeSliceCapsuleId,
+          authorityClass: "evidence",
+        },
+        because:
+          "A SHA-256 verified Haunted Blender Time Slice artifact is displayed as a bounded derived still; its source receipt grants no publication or ancestry authority.",
+      });
+    }
+
+    const memoryCapsuleId =
+      typeof guidance.memoryCapsuleId === "string"
+        ? guidance.memoryCapsuleId
+        : undefined;
+    const memorySource = memoryCapsuleId
+      ? bindings[memoryCapsuleId]
+      : undefined;
+
+    if (memoryCapsuleId && memorySource) {
+      const duration = Math.max(
+        1 / plan.fps,
+        Math.min(2.5, event.duration ?? 1.5),
+      );
+      added.push({
+        id: `${event.id}--franken-memory`,
+        at: event.at,
+        duration,
+        type: "awaken",
+        cards: [cardId],
+        params: {
+          sourceCardId: cardId,
+          newCardId: `${cardId}--franken-memory-freeze`,
+          videoSource: memorySource,
+          frankenMediaAdapter: true,
+          frankenCapsuleId: memoryCapsuleId,
+          authorityClass: "evidence",
+        },
+        because:
+          "A SHA-256 verified Haunted Blender Memory Feedback artifact is shown for one bounded interval as derived cinematic material, not evidence of current presence.",
+      });
+    }
+  }
+
+  const events = [...baseEvents, ...added].sort(
+    (left, right) =>
+      left.at - right.at || left.id.localeCompare(right.id),
+  );
+
+  return {
+    ...plan,
+    events,
+    renderHints: {
+      ...(plan.renderHints ?? {}),
+      notes: [
+        ...(plan.renderHints?.notes ?? []),
+        ...(added.length > 0
+          ? [
+              `Franken media binding injected ${added.length} digest-verified derived-media event(s).`,
+            ]
+          : []),
+      ],
+    },
+    metadata: {
+      ...(plan.metadata ?? {}),
+      studioFrankenMedia: {
+        schema: "playdeck/franken-media-bindings/v0",
+        bindings: Object.entries(bindings)
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([capsuleId, source]) => ({
+            capsuleId,
+            source,
+          })),
+        injectedEventIds: added.map((event) => event.id),
+      },
+    },
+  };
+};
+
