@@ -161,6 +161,26 @@ assert.equal(first.measurements[0].authorityClass, "measurement-only");
 const family = proposeFrankenFamily(first);
 assert.equal(family.length, 6);
 assert.equal(new Set(family.map((proposal) => proposal.lensId)).size, 6);
+assert.equal(
+  new Set(family.map((proposal) => proposal.cinematic.cameraMode)).size,
+  6,
+);
+assert.equal(
+  new Set(family.map((proposal) => proposal.cinematic.topology)).size,
+  6,
+);
+assert.equal(
+  new Set(family.map((proposal) => proposal.cinematic.cutRhythm)).size,
+  6,
+);
+assert.equal(
+  new Set(family.map((proposal) => proposal.cinematic.relationMode)).size,
+  6,
+);
+assert.equal(
+  new Set(family.map((proposal) => proposal.cinematic.memoryMode)).size,
+  6,
+);
 
 const dimensional = family.find(
   (proposal) => proposal.lensId === "dimensional-space",
@@ -258,6 +278,33 @@ assert.deepEqual(decoratedA, decoratedB);
 assert.notEqual(decoratedA.id, basePlan.id);
 assert.equal(decoratedA.events[1].type, "hinge");
 assert.equal(decoratedA.events[2].type, "stack");
+const cinematicMetadata = decoratedA.metadata?.studioFranken as
+  | Record<string, unknown>
+  | undefined;
+const cinematicGrammar = cinematicMetadata?.cinematic as
+  | Record<string, unknown>
+  | undefined;
+assert.equal(cinematicGrammar?.cameraMode, "parallax-orbit");
+assert.equal(cinematicGrammar?.topology, "nested-planes");
+assert.equal(cinematicGrammar?.cutRhythm, "folded-time");
+assert.equal(cinematicGrammar?.relationMode, "orbit-crossing");
+assert.equal(cinematicGrammar?.memoryMode, "nested-afterimage");
+for (const event of decoratedA.events) {
+  const guidance = event.params?.franken as
+    | Record<string, unknown>
+    | undefined;
+  const cinema = guidance?.cinematic as
+    | Record<string, unknown>
+    | undefined;
+  assert.ok(cinema);
+  assert.equal(cinema.cameraMode, "parallax-orbit");
+  assert.equal(cinema.topology, "nested-planes");
+  assert.equal(typeof cinema.shotIndex, "number");
+  assert.equal(typeof cinema.phase, "number");
+  assert.equal(typeof cinema.motionAmplitude, "number");
+  assert.equal(typeof cinema.relationStrength, "number");
+  assert.equal(typeof cinema.memoryOpacity, "number");
+}
 
 const frankenBreakdown = decoratedA.events[2].params?.franken as
   | Record<string, unknown>
@@ -428,6 +475,7 @@ console.log(
         cartridges: proposal.cartridges.map(
           (cartridge) => cartridge.role,
         ),
+        cinematic: proposal.cinematic,
       })),
       kept: continuation.id,
       planId: decoratedA.id,
