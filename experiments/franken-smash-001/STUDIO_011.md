@@ -123,3 +123,21 @@ Generalize digest-bound media from the two Blender proof organs into a small ren
 That would preserve the current law while opening the same door to future accepted Blender organs:
 
 > source-verified derived media composition → typed deterministic cinematic organ composition.
+
+## Cinematic grammar layer
+
+Studio 011 now treats each Listening Eye future as a distinct deterministic directing grammar, not only a different world patch.
+
+| Lens | Camera | Topology | Cut rhythm | Relations | Memory |
+| --- | --- | --- | --- | --- | --- |
+| Landscape | survey | terrain-bands | long-breath | parallel-drift | erosion |
+| Architecture | hinge-orbit | corridor | measured-cuts | axial-lock | room-trace |
+| Organism | pulse-dolly | cellular-cluster | elastic-pulse | attraction-repulsion | scar-recall |
+| Sigil / Type | snap-frame | glyph-grid | syncopated-cuts | stroke-link | overwrite-ghost |
+| Weather / Particles | wind-eye | particle-field | gust-bursts | swarm | wake |
+| Dimensional Space | parallax-orbit | nested-planes | folded-time | orbit-crossing | nested-afterimage |
+
+These fields are carried in the proposal, KEEP continuation, world metadata, plan metadata, and per-event Franken guidance. The Remotion renderer interprets them through deterministic camera movement, card topology, atmosphere, relation paths, and cut pulses.
+
+The grammar is still presentation/composition behavior. It does not change source facts, evidence authority, or receipt authority.
+
