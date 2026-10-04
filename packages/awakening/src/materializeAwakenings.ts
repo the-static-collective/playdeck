@@ -41,6 +41,15 @@ export const materializeAwakenings = ({
   for (const event of events) {
     if (event.type !== "awaken") continue;
 
+    if (event.params?.externalMaterial === true) {
+      if (typeof event.params.videoSource !== "string") {
+        throw new Error(
+          `Externally materialized awakening "${event.id}" requires videoSource.`,
+        );
+      }
+      continue;
+    }
+
     const sourceCardId =
       typeof event.params?.sourceCardId === "string"
         ? event.params.sourceCardId
@@ -217,6 +226,17 @@ export const materializeAwakenings = ({
           newCardId: artifact.newCard.id,
           provider: artifact.provider,
         })),
+        externalMaterialAwakenings: events
+          .filter(
+            (event) =>
+              event.type === "awaken" &&
+              event.params?.externalMaterial === true,
+          )
+          .map((event) => ({
+            eventId: event.id,
+            videoSource: event.params?.videoSource,
+            authorityClass: event.params?.authorityClass,
+          })),
       },
     },
     artifacts,
