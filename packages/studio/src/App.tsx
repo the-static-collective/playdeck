@@ -1936,11 +1936,8 @@ export const App: React.FC = () => {
                       <span>{String(proposal.slot).padStart(2, "0")}</span>
                       <strong>{proposal.label}</strong>
                       <small>
-                        {proposal.cartridges.length > 0
-                          ? proposal.cartridges
-                              .map((item) => item.role.replace("-material", ""))
-                              .join(" · ")
-                          : "toaster lens only"}
+                        {proposal.cinematic.cameraMode} ·{" "}
+                        {proposal.cinematic.topology}
                       </small>
                     </button>
                   ))}
@@ -1962,6 +1959,32 @@ export const App: React.FC = () => {
                       <code>
                         {JSON.stringify(proposal.worldPatch)}
                       </code>
+                      <div className="franken-cinematic-grid">
+                        <div>
+                          <span>CAMERA</span>
+                          <strong>{proposal.cinematic.cameraMode}</strong>
+                        </div>
+                        <div>
+                          <span>FRAME</span>
+                          <strong>{proposal.cinematic.framing}</strong>
+                        </div>
+                        <div>
+                          <span>TOPOLOGY</span>
+                          <strong>{proposal.cinematic.topology}</strong>
+                        </div>
+                        <div>
+                          <span>CUT RHYTHM</span>
+                          <strong>{proposal.cinematic.cutRhythm}</strong>
+                        </div>
+                        <div>
+                          <span>RELATION</span>
+                          <strong>{proposal.cinematic.relationMode}</strong>
+                        </div>
+                        <div>
+                          <span>MEMORY</span>
+                          <strong>{proposal.cinematic.memoryMode}</strong>
+                        </div>
+                      </div>
                       <div className="franken-cartridges">
                         {proposal.cartridges.map((cartridge) => (
                           <span key={cartridge.capsuleId}>
