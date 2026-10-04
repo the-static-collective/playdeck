@@ -1737,6 +1737,20 @@ export const App: React.FC = () => {
                   </div>
                 </div>
 
+                <div className="franken-source-list">
+                  {[
+                    ...frankenContext.influences,
+                    ...frankenContext.evidence,
+                    ...frankenContext.measurements,
+                  ].map((capsule) => (
+                    <div key={capsule.id}>
+                      <span>{capsule.authorityClass}</span>
+                      <strong>{capsule.role}</strong>
+                      <small>{capsule.sourceSchema}</small>
+                    </div>
+                  ))}
+                </div>
+
                 <div className="franken-proposal-grid">
                   {frankenProposals.map((proposal) => (
                     <button
