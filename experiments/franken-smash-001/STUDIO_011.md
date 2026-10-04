@@ -1,85 +1,118 @@
 # Studio 011 — Franken Artifact Crossing
 
-## Question
+## Status
 
-Can Playdeck consume real, separately-owned Toaster / Blender / Dogram artifacts as compositional context without collapsing their authority classes or importing their Git histories?
+Implemented experimentally on `experiment/franken-smash-001`.
 
-## Crossing
+The crossing now lives in the native Playdeck Studio cockpit under `packages/studio`; the standalone `experiments/franken-smash-001/index.html` remains a smaller independent witness of the same design direction.
+
+## Implemented seam
 
 ```text
-Listening Eye artifact (influence-only)
-                 |
-                 v
-        six lens proposals
-                 |
-        human KEEP required
-                 |
-                 v
-        continuation permission
-                 |
-     +-----------+-----------+
-     |           |           |
- observer     time-slice   memory-feedback
- influence      evidence       evidence
-     |           |           |
-     +-----------+-----------+
-                 |
-                 v
-       CompositionPlan guidance
-                 |
-                 v
-        ordinary renderer path
+real source packets
+        |
+        v
+schema + exact producer-pin validation
+        |
+        +--> influence capsules
+        +--> evidence capsules
+        +--> measurement-only capsules
+        |
+        v
+six deterministic Listening Eye futures
+        |
+        | human KEEP
+        v
+continuation permission
+        |
+        v
+ordinary Playdeck recomposition
+        |
+        +--> existing deterministic renderer verbs
+        +--> bounded Blender cartridge provenance
+        +--> Dogram remains non-directive
+        |
+        v
+LOCAL RECOMPOSITION
+        |
+        | existing Render + seal
+        v
+witnessed Playdeck receipt / continuity
 ```
 
-Dogram listener-delta receipts travel beside this path as `measurement-only` material. They are inspectable but mechanically excluded from proposal generation and plan mutation.
+## Native Studio surface
 
-## Source pins used by the first runtime
+Studio 011 now supports:
 
-- Toaster Listening Eye — `feature/listening-eye-v0` @ `fe185abb...`
-- Blender Time Slice — `experimental/time-slice-recajgger-001` @ `60c87462...`
-- Blender Observer-Local Vision — `experimental/observer-local-vision-001` @ `9beec9cc...`
-- Blender Memory Feedback — `experimental/memory-feedback-001` @ `6aca64fd...`
-- Dogram Listener Delta — `main` @ `551b5f9d...`
+- loading multiple `{ producer, artifact }` packet JSON files;
+- exact repo / branch / SHA verification against the inspected experimental heads;
+- authority-separated source inspection;
+- six Toaster Listening Eye proposals;
+- observer, time-slice, and memory cartridge gating;
+- Dogram measurement context with no creative-selection authority;
+- human selection and KEEP;
+- deterministic rewrite into existing Remotion-supported Playdeck verbs;
+- ordinary dirty-state / Render + seal behavior after KEEP.
 
-The runtime refuses mismatched pins rather than silently adapting a newer or different contract.
+The five synthetic UI fixtures under `examples/franken-studio-011/` exercise the whole packet surface.
 
-## Authority table
+## Current visual boundary
 
-| Input | Imported as | May generate proposal? | May mutate plan after KEEP? | Becomes history? |
-| --- | --- | ---: | ---: | ---: |
-| Listening Eye | influence-only | yes | yes, as bounded guidance | no |
-| Observer projection | influence-only | yes, as camera/presentation context | yes, as guidance | no |
-| Time Slice receipt | evidence | only as an available cartridge | yes, when selected lens admits it | no |
-| Memory Feedback receipt | evidence | only as an available cartridge | yes, when selected lens admits it | no |
-| Dogram Listener Delta | measurement-only | **no** | **no** | no |
-| Human KEEP | continuation-permission | n/a | authorizes the selected proposal | still no receipt |
-| Real Playdeck render + seal | resolved execution | n/a | n/a | yes, through existing receipt path |
+This slice deliberately does **not** pretend a Blender receipt contains playable Blender media bytes.
 
-## Current executable slice
+A Time Slice or Memory Feedback receipt can establish that bounded derived material exists and can authorize a cartridge reference. Until its corresponding media bytes are explicitly bound into the Studio asset table, the Playdeck renderer does not display those pixels.
 
-`franken-runtime.mjs`:
+The visible Studio 011 transformation therefore comes from deterministic Playdeck plan recomposition:
 
-1. validates exact source schema + producer branch/SHA pins;
-2. rejects authority escalation;
-3. compiles source artifacts into separate influence/evidence/measurement capsules;
-4. generates one deterministic proposal for each of Listening Eye's six lenses;
-5. attaches Blender cartridges only where the selected lens permits them;
-6. requires explicit KEEP before any CompositionPlan mutation;
-7. annotates events with deterministic Franken guidance while preserving the original event verb and ordinary renderer authority;
-8. records Dogram receipt identities in continuation metadata but does not carry measured outcome content into the plan.
+- `drift`
+- `hinge`
+- `flip`
+- `fracture`
+- `contact-sheet`
+- `stack`
+- `corrupt`
+- `assemble`
 
-`franken-runtime-proof.mjs` proves deterministic replay, six distinct lenses, cartridge gating, measurement non-influence, KEEP authority, plan crossing, source-pin refusal, and authority-escalation refusal.
+The Blender cartridges remain inspectable provenance and a door for the next media-binding experiment.
 
-## Next native seam
+## Authority laws
 
-The next honest Studio change is a small `FrankenPanel` in `packages/studio`:
+```text
+SOURCE != PLAN
+PLAN != RENDER
+PROPOSAL != HISTORY
+INFLUENCE != EVIDENCE
+MEASUREMENT != GRADE
+KEEP = CONTINUATION PERMISSION
+DERIVED MATERIAL != PUBLICATION AUTHORITY
+RENDER + SEAL = WITNESSED PLAYDECK HISTORY
+```
 
-- import a `.franken-artifacts.json` packet locally;
-- show the compiled capsules by authority class;
-- grow the six lens proposals;
-- preview proposal world patches and admitted cartridges;
-- KEEP exactly one;
-- apply `composePlan()` to the current Studio plan;
-- leave render/seal/inherit entirely on Studio's existing path.
+## Proof
 
-Do **not** teach Studio to fetch arbitrary Git branches, execute Blender, or treat a Dogram delta as a ranking signal in this slice.
+`npm run studio:proof` now runs the existing Studio proof, then `franken-studio-proof.ts`, then the Vite build.
+
+The Franken proof requires:
+
+1. deterministic packet compilation;
+2. six stable unique lenses;
+3. correct Blender cartridge gating;
+4. Dogram exclusion from creative cartridges and plan content;
+5. KEEP → continuation permission;
+6. visible deterministic event rewrites;
+7. source-pin refusal;
+8. authority-escalation refusal.
+
+## Next honest crossing
+
+Bind the **actual bytes** behind accepted Blender Time Slice / Memory Feedback receipts into the Studio asset table by digest, then let a renderer adapter consume those bytes only at plan events whose cartridge provenance matches.
+
+That would move the system from:
+
+> receipt-aware cinematic composition
+
+to:
+
+> source-verified derived media composition
+
+without changing the authority model.
