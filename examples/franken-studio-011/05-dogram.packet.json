@@ -1,0 +1,25 @@
+{
+  "producer": {
+    "repo": "the-static-collective/Dogram",
+    "branch": "main",
+    "sha": "551b5f9df18f17ec69b452ddcdff01718e0ff771"
+  },
+  "artifact": {
+    "schema": "dogram.listener-delta-receipt/v0",
+    "specimen": "LISTENER-DELTA-001",
+    "status": "OK",
+    "cohort": {
+      "classification": "MEASURED_RESPONSE_CHANGE",
+      "changed_listener_count": 2
+    },
+    "residuals": [
+      "audio_change_causality_not_established"
+    ],
+    "laws": [
+      "RESPONSE DELTA != PERSON DELTA",
+      "RESPONSE DELTA != CAUSAL EFFECT",
+      "DELTA != VALUE"
+    ],
+    "receipt_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+  }
+}
