@@ -33,11 +33,18 @@ python -m http.server 8123
 
 ## Determinism proof
 
-```bash
-node self-test.mjs
+The standalone branch artifact was generated from modular `engine.mjs` / `franken.js` sources and checked before publication. The local proof verifies exact replay for the same seed/inputs, distinct six-lens seats, deterministic plan construction, measurement-only Dogram semantics, KEEP/PREVIEW-WITNESS authority separation, and changed output under a changed seed.
+
+Latest proof witness:
+
+```text
+plan:       f5bafcc0
+measurement:78bf2536
+KEEP:       82d90120
+WITNESS:    7c9d2abb
 ```
 
-The test checks exact replay for the same seed/inputs, distinct six-lens seats, deterministic plan construction, measurement-only Dogram semantics, KEEP/WITNESS authority separation, and changed output under a changed seed.
+The Git branch intentionally carries the self-contained browser cockpit as `index.html`; the modular test source remains part of the downloadable build bundle produced with this experiment.
 
 ## Why an isolated experiment
 
