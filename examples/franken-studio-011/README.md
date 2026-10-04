@@ -15,7 +15,7 @@ Expected packet result:
 
 Two actual fixture media files are included:
 
-- `franken-time-slice.png` — SHA-256 `5c66be272a5ccb0b3ea8835fc8ffa1043ed0e089eb8b0e2552768db5992aa337`
+- `franken-time-slice.png` — SHA-256 `3c309a67d9c86e3bdd24da34dd675453dff7791214230ce6d0b67f3bfe5cdd04`
 - `franken-memory-feedback.mp4` — SHA-256 `6882b586dc5eaf62bfb8dd279d6b2ec5cd816ec67ec94898a34e8c845b206c9a`
 
 Those exact hashes are declared by packets 03 and 04. After loading the packets, choose **Bind PNG / MP4 by SHA-256** and select both media files. Studio should bind both evidence capsules and reject modified bytes.
