@@ -1453,3 +1453,35 @@ button {
 .franken-media-bind input {
   display: none;
 }
+
+.franken-cinematic-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.franken-cinematic-grid > div {
+  min-width: 0;
+  padding: 6px 7px;
+  border: 1px solid rgba(88, 229, 255, 0.08);
+  background: rgba(20, 31, 39, 0.42);
+}
+
+.franken-cinematic-grid span,
+.franken-cinematic-grid strong {
+  display: block;
+}
+
+.franken-cinematic-grid span {
+  color: #708891;
+  font-size: 7px;
+  letter-spacing: 0.1em;
+}
+
+.franken-cinematic-grid strong {
+  margin-top: 2px;
+  color: #c6d6da;
+  font-size: 8px;
+  overflow-wrap: anywhere;
+}
