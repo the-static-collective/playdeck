@@ -33,6 +33,16 @@ import type {
   StudioQueuedSong,
 } from "./cockpitTypes";
 import {recomposeStudioPlan} from "./recompose";
+import {
+  compileFrankenContext,
+  decoratePlanForFranken,
+  keepFrankenProposal,
+  parseFrankenPacket,
+  patchWorldForFranken,
+  proposeFrankenFamily,
+  type FrankenContext,
+  type FrankenProposal,
+} from "./frankenStudio";
 import {TimelineTree} from "./TimelineTree";
 import {
   createStudioPossibilityEcology,
@@ -136,6 +146,14 @@ export const App: React.FC = () => {
   const [compareLeftCheckpointId, setCompareLeftCheckpointId] =
     useState<string | null>(null);
   const [compareRightCheckpointId, setCompareRightCheckpointId] =
+    useState<string | null>(null);
+  const [frankenContext, setFrankenContext] =
+    useState<FrankenContext | null>(null);
+  const [frankenProposals, setFrankenProposals] =
+    useState<FrankenProposal[]>([]);
+  const [selectedFrankenProposalId, setSelectedFrankenProposalId] =
+    useState<string | null>(null);
+  const [frankenMessage, setFrankenMessage] =
     useState<string | null>(null);
   const dynamicUrls = useRef<string[]>([]);
 
@@ -289,6 +307,10 @@ export const App: React.FC = () => {
       setSelectedTimelineNodeId(null);
       setCompareLeftCheckpointId(null);
       setCompareRightCheckpointId(null);
+      setFrankenContext(null);
+      setFrankenProposals([]);
+      setSelectedFrankenProposalId(null);
+      setFrankenMessage(null);
       setLastCommit(null);
       setDirty(false);
     } catch (reason) {
@@ -375,6 +397,10 @@ export const App: React.FC = () => {
     );
     setCompareLeftCheckpointId(null);
     setCompareRightCheckpointId(null);
+    setFrankenContext(null);
+    setFrankenProposals([]);
+    setSelectedFrankenProposalId(null);
+    setFrankenMessage(null);
     setInheritAfterRender(
       archive.preferences.inheritAfterRender,
     );
@@ -792,6 +818,114 @@ export const App: React.FC = () => {
     } finally {
       setPreparingNext(false);
     }
+  };
+
+  const loadFrankenPackets = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) return;
+
+    try {
+      setError(null);
+      const packets = await Promise.all(
+        files.map(async (file) =>
+          parseFrankenPacket(await file.text()),
+        ),
+      );
+      const context = compileFrankenContext(packets);
+      const proposals = proposeFrankenFamily(context);
+      setFrankenContext(context);
+      setFrankenProposals(proposals);
+      setSelectedFrankenProposalId(proposals[0]?.id ?? null);
+      setFrankenMessage(
+        `${context.influences.length} influence · ${context.evidence.length} evidence · ${context.measurements.length} measurement packets admitted.`,
+      );
+      event.target.value = "";
+    } catch (reason) {
+      setFrankenContext(null);
+      setFrankenProposals([]);
+      setSelectedFrankenProposalId(null);
+      setFrankenMessage(null);
+      setError(
+        reason instanceof Error ? reason.message : String(reason),
+      );
+    }
+  };
+
+  const keepFranken = () => {
+    if (
+      !session ||
+      !frankenContext ||
+      !selectedFrankenProposalId
+    ) {
+      return;
+    }
+
+    try {
+      setError(null);
+      const continuation = keepFrankenProposal(
+        frankenContext,
+        selectedFrankenProposalId,
+      );
+      const worldRule = patchWorldForFranken(
+        session.worldRule,
+        continuation,
+      );
+      const deck: DeckSpec = {
+        ...session.deck,
+        metadata: {
+          ...(session.deck.metadata ?? {}),
+          studioFrankenKeep: {
+            schema: "playdeck/franken-keep-marker/v0",
+            continuationId: continuation.id,
+            proposalId: continuation.proposal.id,
+            lensId: continuation.proposal.lensId,
+            authorityClass: continuation.authorityClass,
+            contextId: continuation.contextId,
+          },
+        },
+      };
+      const recomposed = recomposeStudioPlan({
+        deck,
+        track: session.track,
+        worldRule,
+        priorPlan: session.plan,
+      });
+      const plan = decoratePlanForFranken(
+        recomposed,
+        continuation,
+      );
+
+      setSession((current) =>
+        current
+          ? {
+              ...current,
+              deck,
+              worldRule,
+              plan,
+              receipt: undefined,
+            }
+          : current,
+      );
+      setDirty(true);
+      setLastCommit(null);
+      setFrankenMessage(
+        `KEEP ${continuation.proposal.label} → local recomposition. Render + seal is still required for history.`,
+      );
+      player.current?.seekTo(0);
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : String(reason),
+      );
+    }
+  };
+
+  const clearFranken = () => {
+    setFrankenContext(null);
+    setFrankenProposals([]);
+    setSelectedFrankenProposalId(null);
+    setFrankenMessage(null);
   };
 
   const updateSelected = (
@@ -1554,6 +1688,129 @@ export const App: React.FC = () => {
                 />
               </label>
             ))}
+          </div>
+
+          <div className="franken-studio-panel">
+            <div className="panel-heading">
+              <div>
+                <span className="panel-kicker">FRANKEN / STUDIO 011</span>
+                <strong>
+                  {frankenContext
+                    ? `${frankenProposals.length} deterministic futures`
+                    : "artifact crossing"}
+                </strong>
+              </div>
+              {frankenContext ? (
+                <button
+                  className="franken-clear"
+                  onClick={clearFranken}
+                >
+                  clear
+                </button>
+              ) : null}
+            </div>
+
+            <label className="franken-load">
+              Load artifact packets
+              <input
+                type="file"
+                multiple
+                accept=".json,application/json"
+                onChange={loadFrankenPackets}
+              />
+            </label>
+
+            {frankenContext ? (
+              <>
+                <div className="franken-authority-grid">
+                  <div>
+                    <span>INFLUENCE</span>
+                    <strong>{frankenContext.influences.length}</strong>
+                  </div>
+                  <div>
+                    <span>EVIDENCE</span>
+                    <strong>{frankenContext.evidence.length}</strong>
+                  </div>
+                  <div>
+                    <span>MEASURE</span>
+                    <strong>{frankenContext.measurements.length}</strong>
+                  </div>
+                </div>
+
+                <div className="franken-proposal-grid">
+                  {frankenProposals.map((proposal) => (
+                    <button
+                      key={proposal.id}
+                      className={
+                        selectedFrankenProposalId === proposal.id
+                          ? "franken-proposal selected"
+                          : "franken-proposal"
+                      }
+                      onClick={() =>
+                        setSelectedFrankenProposalId(proposal.id)
+                      }
+                    >
+                      <span>{String(proposal.slot).padStart(2, "0")}</span>
+                      <strong>{proposal.label}</strong>
+                      <small>
+                        {proposal.cartridges.length > 0
+                          ? proposal.cartridges
+                              .map((item) => item.role.replace("-material", ""))
+                              .join(" · ")
+                          : "toaster lens only"}
+                      </small>
+                    </button>
+                  ))}
+                </div>
+
+                {(() => {
+                  const proposal = frankenProposals.find(
+                    (candidate) =>
+                      candidate.id === selectedFrankenProposalId,
+                  );
+                  if (!proposal) return null;
+                  return (
+                    <div className="franken-selection">
+                      <div>
+                        <span>SELECTED PROPOSAL</span>
+                        <strong>{proposal.label}</strong>
+                        <small>{proposal.invitation}</small>
+                      </div>
+                      <code>
+                        {JSON.stringify(proposal.worldPatch)}
+                      </code>
+                      <div className="franken-cartridges">
+                        {proposal.cartridges.map((cartridge) => (
+                          <span key={cartridge.capsuleId}>
+                            {cartridge.role} / {cartridge.mode}
+                          </span>
+                        ))}
+                      </div>
+                      <button
+                        className="franken-keep"
+                        onClick={keepFranken}
+                      >
+                        KEEP → recompose locally
+                      </button>
+                    </div>
+                  );
+                })()}
+              </>
+            ) : (
+              <div className="franken-empty">
+                Packet format: {"{ producer, artifact }"}. Listening Eye is
+                required; Blender and Dogram packets are optional and remain
+                authority-separated.
+              </div>
+            )}
+
+            {frankenMessage ? (
+              <div className="franken-message">{frankenMessage}</div>
+            ) : null}
+
+            <div className="franken-law">
+              INFLUENCE ≠ EVIDENCE · MEASUREMENT ≠ GRADE · KEEP ≠ RECEIPT
+            </div>
           </div>
 
           <div className="panel-heading secondary-heading">
