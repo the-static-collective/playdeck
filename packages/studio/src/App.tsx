@@ -976,7 +976,7 @@ export const App: React.FC = () => {
     return (
       <main className="landing">
         <section className="landing-card">
-          <div className="eyebrow">PLAYDECK / STUDIO 010</div>
+          <div className="eyebrow">PLAYDECK / STUDIO 011</div>
           <h1>Open the room.</h1>
           <p>
             Load any PlayDeck output bundle. Studio reconstructs its
@@ -1023,7 +1023,7 @@ export const App: React.FC = () => {
     <main className="studio-shell">
       <header className="topbar">
         <div>
-          <div className="eyebrow">PLAYDECK / STUDIO 010</div>
+          <div className="eyebrow">PLAYDECK / STUDIO 011</div>
           <h1>{session.deck.title ?? session.deck.id}</h1>
         </div>
         <div className="top-actions">
