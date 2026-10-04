@@ -91,6 +91,7 @@ export type FrankenContinuation = {
   proposal: FrankenProposal;
   evidenceCapsuleIds: string[];
   measurementCapsuleIds: string[];
+  sourceCapsules: FrankenCapsule[];
   laws: string[];
 };
 
@@ -758,6 +759,16 @@ export const keepFrankenProposal = (
     measurementCapsuleIds: context.measurements.map(
       (item) => item.id,
     ),
+    sourceCapsules: [
+      ...context.influences,
+      ...context.evidence,
+      ...context.measurements,
+    ].map((capsule) => ({
+      ...capsule,
+      producer: {...capsule.producer},
+      summary: {...capsule.summary},
+      nonclaims: [...capsule.nonclaims],
+    })),
     laws: [...context.laws],
   };
 };
@@ -921,6 +932,7 @@ export const decoratePlanForFranken = (
         cartridges: proposal.cartridges,
         evidenceCapsuleIds: continuation.evidenceCapsuleIds,
         measurementCapsuleIds: continuation.measurementCapsuleIds,
+        sourceCapsules: continuation.sourceCapsules,
         laws: continuation.laws,
       },
     },
@@ -1002,9 +1014,8 @@ export const bindFrankenMediaToPlan = (
         type: "freeze",
         cards: [cardId],
         params: {
-          sourceCardId: cardId,
-          newCardId: `${cardId}--franken-time-slice`,
           freezeSource: timeSliceSource,
+          externalMaterial: true,
           frankenMediaAdapter: true,
           frankenCapsuleId: timeSliceCapsuleId,
           authorityClass: "evidence",
@@ -1034,9 +1045,8 @@ export const bindFrankenMediaToPlan = (
         type: "awaken",
         cards: [cardId],
         params: {
-          sourceCardId: cardId,
-          newCardId: `${cardId}--franken-memory-freeze`,
           videoSource: memorySource,
+          externalMaterial: true,
           frankenMediaAdapter: true,
           frankenCapsuleId: memoryCapsuleId,
           authorityClass: "evidence",
