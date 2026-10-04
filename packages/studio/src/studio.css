@@ -1412,3 +1412,44 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.franken-media-bind {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 9px;
+  padding: 8px;
+  border: 1px solid rgba(121, 183, 154, 0.16);
+  background: rgba(45, 92, 72, 0.07);
+}
+
+.franken-media-bind span,
+.franken-media-bind strong {
+  display: block;
+}
+
+.franken-media-bind span {
+  color: #758b7e;
+  font-size: 7px;
+  letter-spacing: 0.1em;
+}
+
+.franken-media-bind strong {
+  margin-top: 2px;
+  color: #b7cdbf;
+  font-size: 9px;
+}
+
+.franken-media-bind label {
+  padding: 6px 8px;
+  border: 1px solid rgba(121, 183, 154, 0.3);
+  color: #acd4bb;
+  cursor: pointer;
+  font-size: 8px;
+  text-align: center;
+}
+
+.franken-media-bind input {
+  display: none;
+}
