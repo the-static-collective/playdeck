@@ -7,7 +7,7 @@
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "proof": "tsx src/studio-proof.ts && vite build"
+    "proof": "tsx src/studio-proof.ts && tsx src/franken-studio-proof.ts && vite build"
   },
   "dependencies": {
     "@playdeck/composer": "0.0.1",
