@@ -113,7 +113,11 @@ const sha256 = (value: string) =>
 
 const canonical = (value: unknown): string => {
   if (value === null || typeof value !== "object") {
-    return JSON.stringify(value);
+    const encoded = JSON.stringify(value);
+    if (encoded === undefined) {
+      throw new Error("Canonical sequence identity forbids undefined values.");
+    }
+    return encoded;
   }
   if (Array.isArray(value)) {
     return "[" + value.map(canonical).join(",") + "]";
