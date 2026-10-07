@@ -57,11 +57,17 @@ export const runAlbum = async (
     throw new Error("An album requires at least one track.");
   }
 
-  const images = resolve(options.images);
+  const images = options.images ? resolve(options.images) : undefined;
   const outputDir = resolve(options.outputDir);
-  const deckId = options.id;
+  const deckId = options.deck?.id ?? options.id;
 
-  let deck = ingestFolder(images, {
+  if (!options.deck && !images) {
+    throw new Error(
+      "An album requires an image folder unless a prepared deck is supplied.",
+    );
+  }
+
+  let deck = options.deck ?? ingestFolder(images!, {
     deckId,
     title: options.title ?? options.id,
     sourcePrefix: `asset://${deckId}`,
@@ -71,7 +77,9 @@ export const runAlbum = async (
   writeJson(join(outputDir, "initial-deck.json"), deck);
 
   const results: AlbumTrackResult[] = [];
-  let assetSources: Record<string, string> = {};
+  let assetSources: Record<string, string> = {
+    ...(options.assetSources ?? {}),
+  };
 
   for (let index = 0; index < options.tracks.length; index += 1) {
     const track = options.tracks[index];
