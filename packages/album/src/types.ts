@@ -1,4 +1,4 @@
-import type {WorldRule} from "@playdeck/core";
+import type {DeckSpec, WorldRule} from "@playdeck/core";
 
 export type AlbumTrackInput = {
   id?: string;
@@ -9,7 +9,9 @@ export type AlbumTrackInput = {
 
 export type RunAlbumOptions = {
   id: string;
-  images: string;
+  images?: string;
+  deck?: DeckSpec;
+  assetSources?: Record<string, string>;
   tracks: AlbumTrackInput[];
   outputDir: string;
   title?: string;
