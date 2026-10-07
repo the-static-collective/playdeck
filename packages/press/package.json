@@ -8,7 +8,8 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
-    "press:proof": "tsx src/press-proof.ts"
+    "press:proof": "tsx src/press-proof.ts",
+    "sequence:proof": "tsx src/lemonpress-sequence-proof.ts"
   },
   "dependencies": {
     "@playdeck/core": "0.0.1"
