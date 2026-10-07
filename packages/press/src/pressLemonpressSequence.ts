@@ -220,7 +220,7 @@ export const pressLemonpressSequence = (
   spec: LemonpressSequencePressSpec,
 ): LemonpressSequencePressResult => {
   verifyLemonpressSequenceIdentity(spec.candidate);
-  const parentById = new Map(spec.candidate.parents.map((parent) => [parent.parent_id, parent]));
+  const parentById = new Map(spec.candidate.parents.map((parent) => [parent.parent_id, parent] as const));
 
   const items = spec.candidate.slots.map((occurrence) => {
     const parent = parentById.get(occurrence.source_ref);
