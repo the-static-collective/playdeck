@@ -26,6 +26,12 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Prove page playlist press
+        run: npm run press:proof
+
+      - name: Prove LemonPRESS sequence handoff
+        run: npm run sequence:proof
+
       - name: Prove folder to deck ingestion
         run: npm run ingest:proof
 
@@ -60,6 +66,8 @@ jobs:
             out/ingest-001-deck.generated.json
             out/ingest-001-plan.generated.json
             out/genesis-001-receipt.projected.json
+            out/page-playlist-press-001/**
+            out/lemonpress-sequence-handoff-001/**
             out/command-001/final.mp4
             out/command-001/deck.json
             out/command-001/track.json
