@@ -53,7 +53,7 @@ export type RunPlaydeckOptions = {
    */
   assetSources?: Record<string, string>;
 
-  images: string;
+  images?: string;
   audio: string;
   outputDir: string;
   title?: string;
@@ -86,7 +86,7 @@ const safeAssetName = (logical: string, local: string) => {
 
 const resolveDeckAssetSources = (
   deck: DeckSpec,
-  images: string,
+  images: string | undefined,
   supplied: Record<string, string> = {},
 ): Record<string, string> => {
   const resolved: Record<string, string> = {...supplied};
@@ -99,7 +99,7 @@ const resolveDeckAssetSources = (
       | {relativePath?: string}
       | undefined;
 
-    if (ingest?.relativePath) {
+    if (ingest?.relativePath && images) {
       resolved[logical] = join(images, ingest.relativePath);
     }
   }
@@ -191,7 +191,7 @@ export const runPlaydeck = async (
   renderedReceipt?: string;
   assetSources: Record<string, string>;
 }> => {
-  const images = resolve(options.images);
+  const images = options.images ? resolve(options.images) : undefined;
   const audio = resolve(options.audio);
   const outputDir = resolve(options.outputDir);
   const render = options.render ?? true;
@@ -200,11 +200,17 @@ export const runPlaydeck = async (
     throw new Error(`Audio file not found: ${audio}`);
   }
 
+  if (!options.deck && !images) {
+    throw new Error(
+      "PlayDeck requires an image folder unless a prepared deck is supplied.",
+    );
+  }
+
   mkdirSync(outputDir, {recursive: true});
 
   const stableDeckId = options.deck?.id ?? options.deckId ?? options.id;
 
-  const deck = options.deck ?? ingestFolder(images, {
+  const deck = options.deck ?? ingestFolder(images!, {
     deckId: stableDeckId,
     title: options.title,
     sourcePrefix: `asset://${stableDeckId}`,
@@ -294,11 +300,13 @@ export const runPlaydeck = async (
   writeJson(projectedReceiptPath, projected);
 
   const assetsRoot = join(outputDir, "assets");
-  const bundleImages = join(assetsRoot, "images");
   const bundleAudio = join(assetsRoot, "audio");
-  mkdirSync(bundleImages, {recursive: true});
   mkdirSync(bundleAudio, {recursive: true});
-  cpSync(images, bundleImages, {recursive: true});
+  if (images) {
+    const bundleImages = join(assetsRoot, "images");
+    mkdirSync(bundleImages, {recursive: true});
+    cpSync(images, bundleImages, {recursive: true});
+  }
   cpSync(audio, join(bundleAudio, basename(audio)));
   writeJson(
     join(outputDir, "asset-map.bundle.json"),
