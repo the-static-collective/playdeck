@@ -1,0 +1,56 @@
+name: PlayDeck GENESIS-FULL-001 original complete media and sealed performance receipt
+on:
+  push:
+    branches: [experiment/genesis-full-performance-receipt-001]
+  pull_request:
+    paths:
+      - packages/receipts/src/genesis-full-proof.ts
+      - packages/receipts/src/genesis-full-proof.test.ts
+      - packages/receipts/package.json
+      - .github/workflows/genesis-full-performance.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  full-genesis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install original source-owner runtime and FFprobe
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+          npm install --ignore-scripts --no-package-lock --no-audit --no-fund
+          git restore --source=HEAD -- packages/ingest/src/cli.ts
+          git diff --exit-code
+      - name: Original owner source and new source-derived descendant policy tests
+        run: |
+          npm --workspace @playdeck/receipts run test:full
+          npm run receipt:genesis
+          npm --workspace @playdeck/receipts run typecheck
+      - name: Render EVERY frame of the original 266-second Genesis performance with original soundtrack
+        run: |
+          mkdir -p "$RUNNER_TEMP/full-genesis"
+          cd packages/render-remotion
+          npx --no-install remotion render src/index.ts Genesis001 "$RUNNER_TEMP/full-genesis/genesis-full.mp4" --scale=0.25 --concurrency=3 --codec=h264 --crf=30 --log=error
+      - name: Independently count every original PlayDeck frame, verify audio, materialize original source descendant and SEAL owner-native receipt
+        run: |
+          npm --workspace @playdeck/receipts run proof:full -- --media "$RUNNER_TEMP/full-genesis/genesis-full.mp4" --out "$RUNNER_TEMP/full-genesis/genesis-full-proof.json"
+          node -e 'const fs=require("fs"),x=JSON.parse(fs.readFileSync(process.argv[1]));if(x.proof.media.ffprobeActualFrames!==x.proof.planFrameCount||!x.proof.inheritable||x.receipt.phase!=="rendered"||x.receipt.carry.newCardSpecs.length!==1||x.receipt.evidence[0].scope!=="full-performance"||x.proof.mediaRightsVerified!==false||x.proof.publishingAuthorized!==false)process.exit(2)' "$RUNNER_TEMP/full-genesis/genesis-full-proof.json"
+      - name: Reject a deliberately forged/truncated full-performance file
+        run: |
+          head -c 100000 "$RUNNER_TEMP/full-genesis/genesis-full.mp4" > "$RUNNER_TEMP/full-genesis/truncated.mp4"
+          if npm --workspace @playdeck/receipts run proof:full -- --media "$RUNNER_TEMP/full-genesis/truncated.mp4" --out "$RUNNER_TEMP/full-genesis/FORGED.json";then echo 'TRUNCATED_VIDEO_WAS_SEALED';exit 1;fi
+          test ! -e "$RUNNER_TEMP/full-genesis/FORGED.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: playdeck-genesis-full-actual-266-second-original-video-and-sealed-receipt
+          path: ${{ runner.temp }}/full-genesis/
+          retention-days: 14
+          if-no-files-found: error
