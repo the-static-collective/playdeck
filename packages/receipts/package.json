@@ -8,7 +8,9 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
-    "receipt:genesis": "tsx src/genesis-proof.ts"
+    "receipt:genesis": "tsx src/genesis-proof.ts",
+    "proof:full": "tsx src/genesis-full-proof.ts",
+    "test:full": "tsx --test src/genesis-full-proof.test.ts"
   },
   "dependencies": {
     "@playdeck/core": "0.0.1",
